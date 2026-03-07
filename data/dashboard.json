@@ -1,0 +1,17 @@
+{
+  "date": "2026-03-06",
+  "market_status": "Pre-market",
+  "last_analysis_at": "2026-03-06T08:40:00Z",
+  "insights": {
+    "positive_industries": ["Semiconductor", "HBM"],
+    "risk_industries": ["Airline", "Logistics"]
+  },
+  "briefing_summary": "AI infrastructure and semiconductor demand remain the lead focus for the current watchlist.",
+  "market_indicators": [
+    { "label": "Nasdaq", "value": "18,420", "change": "+0.7%" },
+    { "label": "S&P 500", "value": "5,242", "change": "+0.4%" },
+    { "label": "USD/KRW", "value": "1,332.4", "change": "-0.2%" },
+    { "label": "WTI", "value": "$81.3", "change": "+1.8%" },
+    { "label": "US 10Y", "value": "4.11%", "change": "+4bp" }
+  ]
+}

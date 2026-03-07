@@ -1,0 +1,23 @@
+[
+  {
+    "symbol": "000660.KS",
+    "industry": "HBM",
+    "relation_type": "direct",
+    "reason": "Core Korean HBM producer",
+    "priority": 1
+  },
+  {
+    "symbol": "005930.KS",
+    "industry": "HBM",
+    "relation_type": "direct",
+    "reason": "Large-cap memory name with HBM upside",
+    "priority": 2
+  },
+  {
+    "symbol": "010950.KS",
+    "industry": "Refinery",
+    "relation_type": "direct",
+    "reason": "Oil and margin sensitivity",
+    "priority": 1
+  }
+]

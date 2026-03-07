@@ -1,0 +1,14 @@
+[
+  {
+    "rule_name": "AI infrastructure expansion",
+    "if_keywords": ["ai", "gpu", "data center", "hbm"],
+    "positive_industries": ["Semiconductor", "HBM"],
+    "negative_industries": []
+  },
+  {
+    "rule_name": "Oil supply disruption",
+    "if_keywords": ["oil", "crude", "shipping risk", "middle east"],
+    "positive_industries": ["Energy", "Refinery"],
+    "negative_industries": ["Airline", "Logistics"]
+  }
+]

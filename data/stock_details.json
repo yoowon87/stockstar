@@ -1,0 +1,106 @@
+[
+  {
+    "symbol": "000660.KS",
+    "name": "SK Hynix",
+    "price": 214500,
+    "change_pct": 2.8,
+    "last_analysis_at": "2026-03-06T08:40:00Z",
+    "thesis": "The stock remains the most direct Korean HBM beneficiary if AI infrastructure spending persists through 2026.",
+    "bull_points": [
+      "HBM capacity expansion maps directly to hyperscaler AI demand.",
+      "Pricing power is stronger in high-end memory than in commodity DRAM.",
+      "Recent US capex headlines reinforce medium-term revenue visibility."
+    ],
+    "risk_points": [
+      "Near-term valuation already reflects strong demand assumptions.",
+      "Execution risk remains on output mix and customer qualification.",
+      "Any slowdown in GPU server deployment can delay the thesis."
+    ],
+    "checkpoints": [
+      "HBM shipment guidance in the next earnings call.",
+      "Customer capex commentary from Nvidia and hyperscalers.",
+      "Signs of margin expansion rather than only revenue growth."
+    ],
+    "chart": [
+      { "date": "2026-02-28", "close": 198000, "volume": 3100000 },
+      { "date": "2026-03-03", "close": 201500, "volume": 2800000 },
+      { "date": "2026-03-04", "close": 206000, "volume": 3600000 },
+      { "date": "2026-03-05", "close": 208500, "volume": 3300000 },
+      { "date": "2026-03-06", "close": 214500, "volume": 4200000 }
+    ],
+    "related_news_ids": ["news-1"],
+    "industry_links": [
+      { "industry": "HBM", "relation": "direct", "reason": "Core producer with leading Korean capacity." },
+      { "industry": "Semiconductor", "relation": "direct", "reason": "Memory cycle recovery and AI server mix." }
+    ]
+  },
+  {
+    "symbol": "005930.KS",
+    "name": "Samsung Electronics",
+    "price": 88400,
+    "change_pct": 1.2,
+    "last_analysis_at": "2026-03-05T18:10:00Z",
+    "thesis": "Samsung is a broader memory and foundry vehicle with upside if HBM execution improves.",
+    "bull_points": [
+      "Broad memory cycle recovery supports baseline earnings.",
+      "HBM and packaging improvements can expand AI relevance.",
+      "Balance sheet strength reduces downside from slower macro conditions."
+    ],
+    "risk_points": [
+      "HBM competitiveness is less proven than the market leader.",
+      "Foundry profitability remains a drag.",
+      "The stock can trade sideways if AI upside stays conceptual."
+    ],
+    "checkpoints": [
+      "HBM customer qualification milestones.",
+      "Memory ASP trend versus peers.",
+      "Foundry margin stabilization."
+    ],
+    "chart": [
+      { "date": "2026-02-28", "close": 84200, "volume": 11200000 },
+      { "date": "2026-03-03", "close": 85100, "volume": 9800000 },
+      { "date": "2026-03-04", "close": 86100, "volume": 10500000 },
+      { "date": "2026-03-05", "close": 87300, "volume": 11000000 },
+      { "date": "2026-03-06", "close": 88400, "volume": 12600000 }
+    ],
+    "related_news_ids": ["news-1"],
+    "industry_links": [
+      { "industry": "HBM", "relation": "direct", "reason": "Strategic product area with execution upside." },
+      { "industry": "Semiconductor", "relation": "direct", "reason": "Memory cycle and foundry optionality." }
+    ]
+  },
+  {
+    "symbol": "010950.KS",
+    "name": "S-Oil",
+    "price": 73400,
+    "change_pct": -0.4,
+    "last_analysis_at": "2026-03-04T19:30:00Z",
+    "thesis": "Oil-linked volatility keeps the name tactical rather than conviction-led.",
+    "bull_points": [
+      "Crude spikes can lift near-term refinery attention.",
+      "Macro headlines create trading interest quickly.",
+      "A stable demand backdrop can support refining spreads."
+    ],
+    "risk_points": [
+      "Input cost volatility can reverse sentiment fast.",
+      "Macro benefit is weaker than direct AI or structural growth themes.",
+      "The thesis depends heavily on commodity moves outside company control."
+    ],
+    "checkpoints": [
+      "Refining margin data.",
+      "Red Sea disruption duration.",
+      "Inventory and demand indicators."
+    ],
+    "chart": [
+      { "date": "2026-02-28", "close": 74800, "volume": 640000 },
+      { "date": "2026-03-03", "close": 74100, "volume": 530000 },
+      { "date": "2026-03-04", "close": 73900, "volume": 510000 },
+      { "date": "2026-03-05", "close": 73700, "volume": 490000 },
+      { "date": "2026-03-06", "close": 73400, "volume": 620000 }
+    ],
+    "related_news_ids": ["news-2"],
+    "industry_links": [
+      { "industry": "Refinery", "relation": "direct", "reason": "Direct sensitivity to crude and refining margins." }
+    ]
+  }
+]

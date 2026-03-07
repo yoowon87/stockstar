@@ -1,0 +1,62 @@
+[
+  {
+    "id": "news-1",
+    "title": "미국 하이퍼스케일러들이 AI 데이터센터 투자 예산을 계속 확대",
+    "summary": "대형 클라우드 업체들이 AI 인프라 지출을 한 차례 더 확대하겠다고 시사하며 GPU와 HBM 공급망 수요 기대를 높였습니다.",
+    "source": "MockWire",
+    "published_at": "2026-03-06T08:10:00Z",
+    "importance": "high",
+    "analysis_status": "analyzed",
+    "event_type": "AI 투자 확대",
+    "countries": ["US", "KR"],
+    "positive_industries": ["Semiconductor", "HBM"],
+    "negative_industries": [],
+    "related_symbols": ["000660.KS", "005930.KS"],
+    "ai_summary": "AI 설비투자 확대는 고대역폭 메모리 공급업체에 직접적인 호재이며, 특히 HBM 생산능력과 하이퍼스케일러 고객 노출이 큰 종목에 유리합니다.",
+    "counter_arguments": [
+      "최근 주가 흐름에 기대감이 이미 상당 부분 반영되었을 수 있습니다.",
+      "GPU 출하 병목이 메모리 매출 인식 시점을 늦출 수 있습니다.",
+      "클라우드 수익화가 둔화되면 설비투자 가이던스가 약해질 수 있습니다."
+    ]
+  },
+  {
+    "id": "news-2",
+    "title": "홍해 해상 리스크 재부각에 유가 반등",
+    "summary": "해상 운송 차질 우려가 다시 커지면서 국제유가가 반등했고 운송비 비중이 높은 업종의 비용 부담 우려가 되살아났습니다.",
+    "source": "Global Desk",
+    "published_at": "2026-03-06T06:20:00Z",
+    "importance": "medium",
+    "analysis_status": "pending",
+    "event_type": "거시 리스크",
+    "countries": ["SA", "US"],
+    "positive_industries": ["Energy", "Refinery"],
+    "negative_industries": ["Airline", "Logistics"],
+    "related_symbols": ["010950.KS"],
+    "ai_summary": "에너지 가격 상승은 운송업보다 정유업에 상대적으로 유리하며 비용 민감 업종에는 부담으로 작용할 수 있습니다.",
+    "counter_arguments": [
+      "공급 차질이 제한적이면 단기 유가 급등은 빠르게 되돌려질 수 있습니다.",
+      "국내 정유주는 정제마진 변동성에 계속 노출됩니다.",
+      "운송주는 일부 연료비를 헤지할 수 있습니다."
+    ]
+  },
+  {
+    "id": "news-3",
+    "title": "중국, 산업 수요 부양을 위한 선별적 경기부양 시사",
+    "summary": "중국의 선별적 재정 신호는 일부 경기민감 업종 수요를 안정시킬 수 있지만 전면적 경기회복을 뜻하지는 않습니다.",
+    "source": "Macro Brief",
+    "published_at": "2026-03-05T22:40:00Z",
+    "importance": "medium",
+    "analysis_status": "stale",
+    "event_type": "정책",
+    "countries": ["CN"],
+    "positive_industries": ["Shipbuilding", "Machinery"],
+    "negative_industries": [],
+    "related_symbols": ["009540.KS"],
+    "ai_summary": "수출 연계 산업재에는 우호적 해석이 가능하지만 중국 경기의 광범위한 반등으로 보기는 아직 이릅니다.",
+    "counter_arguments": [
+      "부양책 헤드라인이 실제 수요 회복보다 먼저 나오는 경우가 많습니다.",
+      "수출주는 환율과 수주 시점 변수에 계속 노출됩니다.",
+      "정책이 실제 집행으로 이어질지는 아직 불확실합니다."
+    ]
+  }
+]
