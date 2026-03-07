@@ -7,7 +7,38 @@ import "./styles.css";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(console.error);
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        if (registration.waiting) {
+          window.dispatchEvent(
+            new CustomEvent("stockstar-update-ready", {
+              detail: registration.waiting,
+            }),
+          );
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const installing = registration.installing;
+          if (!installing) {
+            return;
+          }
+
+          installing.addEventListener("statechange", () => {
+            if (
+              installing.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              window.dispatchEvent(
+                new CustomEvent("stockstar-update-ready", {
+                  detail: registration.waiting ?? installing,
+                }),
+              );
+            }
+          });
+        });
+      })
+      .catch(console.error);
   });
 }
 

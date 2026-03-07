@@ -89,6 +89,10 @@ html {
   flex-wrap: wrap;
 }
 
+.mobile-bottom-nav {
+  display: none;
+}
+
 .nav-link {
   padding: 10px 16px;
   border-radius: 999px;
@@ -105,6 +109,18 @@ html {
 
 .main-content {
   padding: 24px 28px 28px;
+}
+
+.app-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 28px 0;
+  padding: 16px 20px;
+  border: 1px solid rgba(255, 200, 127, 0.2);
+  border-radius: 20px;
+  background: linear-gradient(90deg, rgba(255, 157, 73, 0.14), rgba(95, 209, 197, 0.08));
 }
 
 .sidebar-section,
@@ -648,6 +664,41 @@ p {
   }
 
   .main-content {
-    padding-bottom: 96px;
+    padding-bottom: 116px;
+  }
+
+  .app-banner {
+    margin-left: 16px;
+    margin-right: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(5, 10, 16, 0.94);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-nav-link {
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    border-radius: 14px;
+    color: var(--text-muted);
+  }
+
+  .mobile-nav-link-active {
+    color: #fff8ef;
+    background: rgba(255, 157, 73, 0.14);
   }
 }

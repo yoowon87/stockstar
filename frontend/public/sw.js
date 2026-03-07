@@ -1,5 +1,10 @@
-const CACHE_NAME = "stockstar-shell-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg", "/icons/maskable-icon.svg"];
+const CACHE_NAME = "stockstar-shell-v2";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/icons/icon.svg",
+  "/icons/maskable-icon.svg",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -12,13 +17,17 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key)),
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
       ),
     ),
   );
   self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -29,9 +38,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match("/")),
-    );
+    event.respondWith(fetch(request).catch(() => caches.match("/")));
     return;
   }
 
@@ -41,11 +48,13 @@ self.addEventListener("fetch", (event) => {
         return cached;
       }
 
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      });
+      return fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => cached);
     }),
   );
 });
