@@ -13,9 +13,9 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const navItems = [
-  { to: "/", label: "대시보드" },
-  { to: "/news", label: "뉴스" },
-  { to: "/stocks/000660.KS", label: "종목 상세" },
+  { to: "/", label: "Dashboard" },
+  { to: "/news", label: "News" },
+  { to: "/stocks/000660.KS", label: "Stock Detail" },
 ];
 
 export default function App() {
@@ -85,7 +85,7 @@ export default function App() {
         <header className="top-nav">
           <div>
             <p className="eyebrow">StockStar</p>
-            <h2>개인 투자 리서치 대시보드</h2>
+            <h2>Personal investment research dashboard</h2>
           </div>
           <nav className="nav-list nav-list-horizontal">
             {navItems.map((item) => (
@@ -107,13 +107,13 @@ export default function App() {
             <div>
               <strong>
                 {waitingWorker
-                  ? "새 버전이 준비되었습니다."
-                  : "홈 화면에 설치해서 앱처럼 사용할 수 있습니다."}
+                  ? "A new version is ready."
+                  : "Install this app on your home screen."}
               </strong>
               <p className="muted">
                 {waitingWorker
-                  ? "업데이트를 적용하면 최신 화면과 캐시가 바로 반영됩니다."
-                  : "PWA로 설치하면 어디서든 빠르게 열고 사용할 수 있습니다."}
+                  ? "Apply the update to refresh the latest UI and cached data."
+                  : "Use the PWA version for faster access from any device."}
               </p>
             </div>
             <div className="action-row">
@@ -123,7 +123,7 @@ export default function App() {
                   type="button"
                   onClick={handleInstallApp}
                 >
-                  앱 설치
+                  Install App
                 </button>
               ) : null}
               {waitingWorker ? (
@@ -132,7 +132,7 @@ export default function App() {
                   type="button"
                   onClick={handleApplyUpdate}
                 >
-                  업데이트 적용
+                  Apply Update
                 </button>
               ) : null}
             </div>

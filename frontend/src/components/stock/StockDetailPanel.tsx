@@ -72,7 +72,9 @@ export function StockDetailPanel({
               </div>
             </div>
           ) : (
-            <p className="muted">현재 보유 중이 아닌 종목입니다. 관심종목 후보로 검토 중입니다.</p>
+            <p className="muted">
+              현재 보유 중이 아닌 종목입니다. 관심종목 후보로 검토 중입니다.
+            </p>
           )}
         </section>
 

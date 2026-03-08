@@ -8,4 +8,5 @@ backend/app/services/__pycache__/
 backend/storage/
 storage/
 firebase-debug.log
+.firebase/
 *.pyc
