@@ -93,7 +93,7 @@ export function NewsPage() {
             onClick={handleAnalyze}
             disabled={isAnalyzing}
           >
-            {isAnalyzing ? "분석 중..." : "이 뉴스 분석"}
+            {isAnalyzing ? "분석 중.." : "이 뉴스 분석"}
           </button>
         </div>
 

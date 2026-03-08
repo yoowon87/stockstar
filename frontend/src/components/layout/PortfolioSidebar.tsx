@@ -18,9 +18,9 @@ export function PortfolioSidebar({ portfolio }: PortfolioSidebarProps) {
     <aside className="portfolio-sidebar">
       <div className="sidebar-section">
         <p className="eyebrow">Portfolio</p>
-        <h1>내 투자 데스크</h1>
+        <h1>투자 대시보드</h1>
         <p className="sidebar-copy">
-          자산 구조와 카테고리 비중을 한 화면에서 확인하는 개인용 대시보드
+          자산 구조와 카테고리 비중을 한 화면에서 확인하는 개인용 리서치 패널입니다.
         </p>
       </div>
 
@@ -33,7 +33,7 @@ export function PortfolioSidebar({ portfolio }: PortfolioSidebarProps) {
             }}
           >
             <div className="donut-center">
-              <span>총 자산</span>
+              <span>총자산</span>
               <strong>{portfolio.totalAsset}</strong>
             </div>
           </div>

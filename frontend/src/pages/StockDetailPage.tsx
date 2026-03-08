@@ -30,8 +30,8 @@ export function StockDetailPage() {
         <p className="eyebrow">Stock Detail</p>
         <h2>{stock.name}</h2>
         <p className="muted">
-          증권사 앱처럼 보는 종목 상세 화면입니다. 차트, 보유 정보, 관련 뉴스,
-          카테고리 편입 이유를 한 번에 확인할 수 있습니다.
+          차트, 보유 정보, 관련 뉴스, 카테고리 편입 이유를 한 번에 보는 종목 상세
+          화면입니다.
         </p>
       </section>
       <StockDetailPanel stock={stock} relatedNews={relatedNews} compact />

@@ -61,6 +61,15 @@ export function DashboardPage() {
 
   const relatedNews = filterNewsForStock(selectedStock.symbol, newsItems);
 
+  async function refreshData() {
+    const [dashboardResponse, newsResponse] = await Promise.all([
+      getDashboard(),
+      getNewsList(),
+    ]);
+    setDashboard(dashboardResponse);
+    setNewsItems(newsResponse);
+  }
+
   async function handleGenerateBriefing() {
     setIsGenerating(true);
     try {
@@ -78,12 +87,7 @@ export function DashboardPage() {
       setSyncStatus(
         `실시간 뉴스 ${result.inserted_count}건을 추가했습니다. 현재 총 ${result.total_count}건입니다.`,
       );
-      const [dashboardResponse, newsResponse] = await Promise.all([
-        getDashboard(),
-        getNewsList(),
-      ]);
-      setDashboard(dashboardResponse);
-      setNewsItems(newsResponse);
+      await refreshData();
     } finally {
       setIsSyncing(false);
     }
@@ -102,7 +106,7 @@ export function DashboardPage() {
           <p className="eyebrow">Morning Briefing</p>
           <h3>{dashboard.briefing_summary}</h3>
           <p className="muted">
-            오늘 핵심 뉴스 {dashboard.headline_news.length}건, 수혜 산업{" "}
+            오늘 핵심 뉴스 {dashboard.headline_news.length}건 · 수혜 업종{" "}
             {dashboard.insights.positive_industries.join(", ")}
           </p>
         </div>
@@ -113,7 +117,7 @@ export function DashboardPage() {
             onClick={handleGenerateBriefing}
             disabled={isGenerating}
           >
-            {isGenerating ? "브리핑 생성 중..." : "오늘 브리핑 생성"}
+            {isGenerating ? "브리핑 생성 중.." : "오늘 브리핑 생성"}
           </button>
           <button
             className="secondary-button"
@@ -121,7 +125,7 @@ export function DashboardPage() {
             onClick={handleSyncNews}
             disabled={isSyncing}
           >
-            {isSyncing ? "동기화 중..." : "실시간 뉴스 동기화"}
+            {isSyncing ? "동기화 중.." : "실시간 뉴스 동기화"}
           </button>
         </div>
       </section>

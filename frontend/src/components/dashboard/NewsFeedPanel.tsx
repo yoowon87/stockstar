@@ -12,8 +12,8 @@ export function NewsFeedPanel({ categoryLabel, news }: NewsFeedPanelProps) {
     <section className="content-card">
       <div className="card-header">
         <div>
-          <p className="eyebrow">관련 뉴스</p>
-          <h3>{categoryLabel} 뉴스 플로우</h3>
+          <p className="eyebrow">News Flow</p>
+          <h3>{categoryLabel} 관련 뉴스</h3>
         </div>
       </div>
       <div className="stack">
@@ -28,7 +28,7 @@ export function NewsFeedPanel({ categoryLabel, news }: NewsFeedPanelProps) {
               <p className="muted">{item.summary}</p>
             </div>
             <Link className="text-link" to={`/news/${item.id}`}>
-              상세 보기
+              자세히 보기
             </Link>
           </article>
         ))}

@@ -22,7 +22,7 @@ export function StockDetailPanel({
           <p className="eyebrow">{stock.market}</p>
           <h3>{stock.name}</h3>
           <p className="muted">
-            {stock.symbol} · {stock.marketCapLabel} · 거래량 {stock.volumeLabel}
+            {stock.symbol} · 시가총액 {stock.marketCapLabel} · 거래량 {stock.volumeLabel}
           </p>
         </div>
         <div className="detail-price">
@@ -55,7 +55,7 @@ export function StockDetailPanel({
         </section>
 
         <section className="detail-card">
-          <h4>내 보유 정보</h4>
+          <h4>보유 정보</h4>
           {stock.holding.owned ? (
             <div className="holding-grid">
               <div>

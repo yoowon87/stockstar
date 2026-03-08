@@ -15,8 +15,8 @@ export function StockRankingList({
     <section className="content-card">
       <div className="card-header">
         <div>
-          <p className="eyebrow">추천 종목</p>
-          <h3>카테고리 우선순위</h3>
+          <p className="eyebrow">Top Picks</p>
+          <h3>카테고리 추천 순위</h3>
         </div>
       </div>
       <div className="stack">
