@@ -10,3 +10,5 @@ storage/
 firebase-debug.log
 .firebase/
 *.pyc
+.env
+backend/.env

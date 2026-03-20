@@ -32,6 +32,17 @@ export interface DashboardData {
   watchlist: WatchlistItem[];
 }
 
+export interface Speaker {
+  name: string;
+  type: 'government' | 'company' | 'person' | 'organization' | 'unknown';
+  country: string;
+}
+
+export interface AffectedCountry {
+  country: string;
+  direction: 'positive' | 'negative' | 'neutral';
+}
+
 export interface NewsItem {
   id: string;
   title: string;
@@ -41,12 +52,19 @@ export interface NewsItem {
   importance: string;
   analysis_status: string;
   event_type: string;
+  // 발생국 / 발언주체 / 영향국
+  origin_country: string;
+  speaker: Speaker;
+  affected_countries: AffectedCountry[];
+  // 산업 영향
   countries: string[];
   positive_industries: string[];
   negative_industries: string[];
   related_symbols: string[];
   ai_summary: string;
   counter_arguments: string[];
+  link?: string;
+  body?: string;
 }
 
 export interface StockDetail {

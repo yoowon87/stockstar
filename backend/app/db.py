@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 import sqlite3
@@ -36,13 +37,18 @@ def init_db() -> None:
                 importance TEXT NOT NULL,
                 analysis_status TEXT NOT NULL,
                 event_type TEXT NOT NULL,
+                origin_country TEXT NOT NULL DEFAULT '',
+                speaker TEXT NOT NULL DEFAULT '{}',
+                affected_countries TEXT NOT NULL DEFAULT '[]',
                 countries TEXT NOT NULL,
                 positive_industries TEXT NOT NULL,
                 negative_industries TEXT NOT NULL,
                 related_symbols TEXT NOT NULL,
                 ai_summary TEXT NOT NULL,
                 counter_arguments TEXT NOT NULL,
-                analyzed_at TEXT
+                analyzed_at TEXT,
+                link TEXT DEFAULT '',
+                body TEXT DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS stock_details (
@@ -73,32 +79,31 @@ def init_db() -> None:
             """
         )
 
+        # Migration: add link + body columns if missing
+        try:
+            connection.execute("ALTER TABLE news_items ADD COLUMN link TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            connection.execute("ALTER TABLE news_items ADD COLUMN body TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
+
         connection.executemany(
             """
-            INSERT INTO news_items (
+            INSERT OR REPLACE INTO news_items (
                 id, title, summary, source, published_at, importance,
-                analysis_status, event_type, countries, positive_industries,
+                analysis_status, event_type, origin_country, speaker,
+                affected_countries, countries, positive_industries,
                 negative_industries, related_symbols, ai_summary,
                 counter_arguments, analyzed_at
             ) VALUES (
                 :id, :title, :summary, :source, :published_at, :importance,
-                :analysis_status, :event_type, :countries, :positive_industries,
+                :analysis_status, :event_type, :origin_country, :speaker,
+                :affected_countries, :countries, :positive_industries,
                 :negative_industries, :related_symbols, :ai_summary,
                 :counter_arguments, :analyzed_at
             )
-            ON CONFLICT(id) DO UPDATE SET
-                title = excluded.title,
-                summary = excluded.summary,
-                source = excluded.source,
-                published_at = excluded.published_at,
-                importance = excluded.importance,
-                event_type = excluded.event_type,
-                countries = excluded.countries,
-                positive_industries = excluded.positive_industries,
-                negative_industries = excluded.negative_industries,
-                related_symbols = excluded.related_symbols,
-                ai_summary = excluded.ai_summary,
-                counter_arguments = excluded.counter_arguments
             """,
             [_serialize_news_item(item) for item in get_news_items()],
         )
@@ -151,6 +156,9 @@ def init_db() -> None:
 def _serialize_news_item(item: dict[str, Any]) -> dict[str, Any]:
     return {
         **item,
+        "origin_country": item.get("origin_country", ""),
+        "speaker": json.dumps(item.get("speaker", {"name": "", "type": "unknown", "country": ""})),
+        "affected_countries": json.dumps(item.get("affected_countries", [])),
         "countries": json.dumps(item["countries"]),
         "positive_industries": json.dumps(item["positive_industries"]),
         "negative_industries": json.dumps(item["negative_industries"]),
@@ -182,12 +190,17 @@ def deserialize_news_row(row: sqlite3.Row) -> dict[str, Any]:
         "importance": row["importance"],
         "analysis_status": row["analysis_status"],
         "event_type": row["event_type"],
+        "origin_country": row["origin_country"] if "origin_country" in row.keys() else "",
+        "speaker": json.loads(row["speaker"]) if "speaker" in row.keys() else {"name": "", "type": "unknown", "country": ""},
+        "affected_countries": json.loads(row["affected_countries"]) if "affected_countries" in row.keys() else [],
         "countries": json.loads(row["countries"]),
         "positive_industries": json.loads(row["positive_industries"]),
         "negative_industries": json.loads(row["negative_industries"]),
         "related_symbols": json.loads(row["related_symbols"]),
         "ai_summary": row["ai_summary"],
         "counter_arguments": json.loads(row["counter_arguments"]),
+        "link": row["link"] if "link" in row.keys() else "",
+        "body": row["body"] if "body" in row.keys() else "",
     }
 
 

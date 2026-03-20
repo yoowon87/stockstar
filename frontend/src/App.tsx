@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 
-import { PortfolioSidebar } from "./components/layout/PortfolioSidebar";
-import { portfolioSummary } from "./data/mockInvestmentData";
-import { DashboardPage } from "./pages/DashboardPage";
+import { HomePage } from "./pages/HomePage";
 import { NewsPage } from "./pages/NewsPage";
+import { StockPage } from "./pages/StockPage";
 import { StockDetailPage } from "./pages/StockDetailPage";
+import { getDashboard } from "./services/api";
+import { fetchMarketIndicators } from "./services/backendApi";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -13,155 +14,146 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
-  { to: "/news", label: "News" },
-  { to: "/stocks/000660.KS", label: "Stock Detail" },
+  { to: "/", label: "🌍 Home", end: true },
+  { to: "/news", label: "📰 News" },
+  { to: "/stocks", label: "📈 Stock" },
 ];
 
 export default function App() {
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [tickers, setTickers] = useState<Array<{ label: string; value: string; change: string }>>([]);
+
+  const [tickerLoading, setTickerLoading] = useState(false);
+
+  useEffect(() => {
+    // Try real market data from backend first, fallback to Firebase mock
+    setTickerLoading(true);
+    fetchMarketIndicators()
+      .then((data) => {
+        if (data.length > 0) {
+          setTickers(data);
+        } else {
+          return getDashboard().then((d) => setTickers(d.market_indicators ?? []));
+        }
+      })
+      .finally(() => setTickerLoading(false));
+  }, []);
 
   useEffect(() => {
     function handleBeforeInstallPrompt(event: Event) {
-      const promptEvent = event as BeforeInstallPromptEvent;
       event.preventDefault();
-      setInstallPrompt(promptEvent);
+      setInstallPrompt(event as BeforeInstallPromptEvent);
     }
-
     function handleUpdateReady(event: Event) {
-      const customEvent = event as CustomEvent<ServiceWorker>;
-      setWaitingWorker(customEvent.detail);
+      setWaitingWorker((event as CustomEvent<ServiceWorker>).detail);
     }
-
-    window.addEventListener(
-      "beforeinstallprompt",
-      handleBeforeInstallPrompt as EventListener,
-    );
-    window.addEventListener(
-      "stockstar-update-ready",
-      handleUpdateReady as EventListener,
-    );
-
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt as EventListener);
+    window.addEventListener("stockstar-update-ready", handleUpdateReady as EventListener);
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt as EventListener,
-      );
-      window.removeEventListener(
-        "stockstar-update-ready",
-        handleUpdateReady as EventListener,
-      );
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt as EventListener);
+      window.removeEventListener("stockstar-update-ready", handleUpdateReady as EventListener);
     };
   }, []);
 
   async function handleInstallApp() {
-    if (!installPrompt) {
-      return;
-    }
-
+    if (!installPrompt) return;
     await installPrompt.prompt();
     await installPrompt.userChoice;
     setInstallPrompt(null);
   }
 
   function handleApplyUpdate() {
-    if (!waitingWorker) {
-      return;
-    }
-
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      window.location.reload();
-    });
-
+    if (!waitingWorker) return;
+    navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload());
     waitingWorker.postMessage({ type: "SKIP_WAITING" });
   }
 
   return (
-    <div className="app-shell">
-      <PortfolioSidebar portfolio={portfolioSummary} />
-      <div className="workspace-shell">
-        <header className="top-nav">
-          <div>
-            <p className="eyebrow">StockStar</p>
-            <h2>Personal investment research dashboard</h2>
-          </div>
-          <nav className="nav-list nav-list-horizontal">
+    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
+      {/* 상단 네비게이션 */}
+      <header className="flex items-center justify-between px-4 py-1.5 bg-slate-900 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-white tracking-tight">StockStar</span>
+          <nav className="flex gap-0.5">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
-                  isActive ? "nav-link nav-link-active" : "nav-link"
+                  `text-xs px-2.5 py-1 rounded transition-colors font-medium ${
+                    isActive
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  }`
                 }
               >
                 {item.label}
               </NavLink>
             ))}
           </nav>
-        </header>
+        </div>
+        {tickers.length > 0 && (
+          <div className="hidden sm:flex items-center gap-3">
+            {tickers.map((t) => (
+              <div key={t.label} className="flex items-center gap-1 market-ticker">
+                <span className="text-slate-500">{t.label}</span>
+                <span className="text-slate-200">{t.value}</span>
+                <span className={t.change.startsWith('-') ? 'text-red-400' : 'text-green-400'}>{t.change}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </header>
 
-        {installPrompt || waitingWorker ? (
-          <section className="app-banner">
-            <div>
-              <strong>
-                {waitingWorker
-                  ? "A new version is ready."
-                  : "Install this app on your home screen."}
-              </strong>
-              <p className="muted">
-                {waitingWorker
-                  ? "Apply the update to refresh the latest UI and cached data."
-                  : "Use the PWA version for faster access from any device."}
-              </p>
-            </div>
-            <div className="action-row">
-              {installPrompt ? (
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={handleInstallApp}
-                >
-                  Install App
-                </button>
-              ) : null}
-              {waitingWorker ? (
-                <button
-                  className="primary-button"
-                  type="button"
-                  onClick={handleApplyUpdate}
-                >
-                  Apply Update
-                </button>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
+      {/* 업데이트/설치 배너 */}
+      {(installPrompt || waitingWorker) && (
+        <div className="flex items-center justify-between px-5 py-2 bg-blue-900/60 border-b border-blue-700/40 text-sm flex-shrink-0">
+          <span className="text-blue-200">
+            {waitingWorker ? "새 버전이 준비됐습니다." : "홈 화면에 앱을 설치할 수 있습니다."}
+          </span>
+          {waitingWorker ? (
+            <button onClick={handleApplyUpdate} className="text-xs px-3 py-1 rounded bg-blue-500 hover:bg-blue-400 text-white">
+              업데이트 적용
+            </button>
+          ) : (
+            <button onClick={handleInstallApp} className="text-xs px-3 py-1 rounded bg-blue-500 hover:bg-blue-400 text-white">
+              설치
+            </button>
+          )}
+        </div>
+      )}
 
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/news" element={<NewsPage />} />
-            <Route path="/news/:newsId" element={<NewsPage />} />
-            <Route path="/stocks/:symbol" element={<StockDetailPage />} />
-          </Routes>
-        </main>
+      {/* 메인 콘텐츠 (남은 공간 모두 차지) */}
+      <main className="flex-1 min-h-0 overflow-hidden">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news/:newsId" element={<NewsPage />} />
+          <Route path="/stocks" element={<StockPage />} />
+          <Route path="/stocks/:symbol" element={<StockDetailPage />} />
+        </Routes>
+      </main>
 
-        <nav className="mobile-bottom-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                isActive ? "mobile-nav-link mobile-nav-link-active" : "mobile-nav-link"
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+      {/* 모바일 하단 네비게이션 */}
+      <nav className="sm:hidden flex border-t border-slate-800 bg-slate-900 flex-shrink-0">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
+                isActive ? "text-blue-400" : "text-slate-500"
+              }`
+            }
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

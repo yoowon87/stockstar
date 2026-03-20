@@ -1,5 +1,10 @@
+from __future__ import annotations
+from typing import Dict
 from contextlib import asynccontextmanager
 import os
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,5 +48,5 @@ app.include_router(stocks_router, prefix="/api")
 
 
 @app.get("/health")
-def health_check() -> dict[str, str]:
+def health_check() -> Dict[str, str]:
     return {"status": "ok"}

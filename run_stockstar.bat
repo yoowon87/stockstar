@@ -32,7 +32,7 @@ popd
 
 echo [2/4] Installing frontend dependencies...
 pushd "%FRONTEND_DIR%"
-call npm install
+call npm install --legacy-peer-deps
 if errorlevel 1 (
   echo [ERROR] Frontend dependency installation failed.
   popd

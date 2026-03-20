@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -17,9 +19,9 @@ class WatchlistItem(BaseModel):
 
 
 class DashboardInsights(BaseModel):
-    positive_industries: list[str]
-    risk_industries: list[str]
-    focus_symbols: list[WatchlistItem]
+    positive_industries: List[str]
+    risk_industries: List[str]
+    focus_symbols: List[WatchlistItem]
 
 
 class MarketIndicator(BaseModel):
@@ -33,10 +35,21 @@ class DashboardPayload(BaseModel):
     market_status: str
     last_analysis_at: str
     briefing_summary: str
-    headline_news: list[HeadlineNews]
+    headline_news: List[HeadlineNews]
     insights: DashboardInsights
-    market_indicators: list[MarketIndicator]
-    watchlist: list[WatchlistItem]
+    market_indicators: List[MarketIndicator]
+    watchlist: List[WatchlistItem]
+
+
+class Speaker(BaseModel):
+    name: str
+    type: str
+    country: str
+
+
+class AffectedCountry(BaseModel):
+    country: str
+    direction: str
 
 
 class NewsItem(BaseModel):
@@ -48,12 +61,17 @@ class NewsItem(BaseModel):
     importance: str
     analysis_status: str
     event_type: str
-    countries: list[str]
-    positive_industries: list[str]
-    negative_industries: list[str]
-    related_symbols: list[str]
+    origin_country: str = ""
+    speaker: Speaker = Speaker(name="", type="unknown", country="")
+    affected_countries: List[AffectedCountry] = []
+    countries: List[str]
+    positive_industries: List[str]
+    negative_industries: List[str]
+    related_symbols: List[str]
     ai_summary: str
-    counter_arguments: list[str]
+    counter_arguments: List[str]
+    link: str = ""
+    body: str = ""
 
 
 class ChartPoint(BaseModel):
@@ -75,14 +93,23 @@ class StockDetail(BaseModel):
     change_pct: float
     last_analysis_at: str
     thesis: str
-    bull_points: list[str]
-    risk_points: list[str]
-    checkpoints: list[str]
-    chart: list[ChartPoint]
-    related_news_ids: list[str]
-    industry_links: list[IndustryLink]
+    bull_points: List[str]
+    risk_points: List[str]
+    checkpoints: List[str]
+    chart: List[ChartPoint]
+    related_news_ids: List[str]
+    industry_links: List[IndustryLink]
 
 
 class SyncNewsResponse(BaseModel):
     inserted_count: int
     total_count: int
+
+
+class CollectNewsResponse(BaseModel):
+    inserted_count: int
+    total_fetched: int
+    after_dedup: int
+    total_in_db: int
+    regions_queried: int
+    errors: List[str] = []

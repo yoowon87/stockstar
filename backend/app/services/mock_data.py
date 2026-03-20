@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timezone
 import json
 
@@ -147,10 +148,11 @@ def sync_live_news() -> dict[str, int]:
                 """
                 INSERT INTO news_items (
                     id, title, summary, source, published_at, importance,
-                    analysis_status, event_type, countries, positive_industries,
+                    analysis_status, event_type, origin_country, speaker,
+                    affected_countries, countries, positive_industries,
                     negative_industries, related_symbols, ai_summary,
                     counter_arguments, analyzed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     item["id"],
@@ -161,6 +163,9 @@ def sync_live_news() -> dict[str, int]:
                     item["importance"],
                     item["analysis_status"],
                     item["event_type"],
+                    item.get("origin_country", ""),
+                    json.dumps(item.get("speaker", {"name": "", "type": "unknown", "country": ""})),
+                    json.dumps(item.get("affected_countries", [])),
                     json.dumps(item["countries"]),
                     json.dumps(item["positive_industries"]),
                     json.dumps(item["negative_industries"]),

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -13,22 +14,22 @@ def _load_json(path: Path) -> Any:
         return json.load(file)
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def get_news_items() -> list[dict[str, Any]]:
     return _load_json(DATA_DIR / "news_items.json")
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def get_stock_details() -> dict[str, dict[str, Any]]:
     items = _load_json(DATA_DIR / "stock_details.json")
     return {item["symbol"]: item for item in items}
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def get_dashboard_config() -> dict[str, Any]:
     return _load_json(DATA_DIR / "dashboard.json")
 
 
-@lru_cache
+@lru_cache(maxsize=None)
 def get_watchlist() -> list[dict[str, Any]]:
     return _load_json(DATA_DIR / "watchlist.json")
