@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { HomePage } from "./pages/HomePage";
 import { NewsPage } from "./pages/NewsPage";
-import { StockPage } from "./pages/StockPage";
-import { StockDetailPage } from "./pages/StockDetailPage";
-import { getDashboard } from "./services/api";
+import { JournalPage } from "./pages/JournalPage";
+import { PortfolioPage } from "./pages/PortfolioPage";
+import { EdgePage } from "./pages/EdgePage";
+import { ReviewPage } from "./pages/ReviewPage";
 import { fetchMarketIndicators } from "./services/backendApi";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,30 +15,77 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const navItems = [
-  { to: "/", label: "🌍 Home", end: true },
-  { to: "/news", label: "📰 News" },
-  { to: "/stocks", label: "📈 Stock" },
+  { to: "/", label: "Home", icon: "home", end: true },
+  { to: "/journal", label: "Journal", icon: "journal" },
+  { to: "/portfolio", label: "Portfolio", icon: "pie" },
+  { to: "/edge", label: "Edge", icon: "target" },
+  { to: "/review", label: "Review", icon: "calendar" },
 ];
 
+function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
+  const s = size;
+  switch (type) {
+    case "home":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 7 L8 2 L14 7 V13 a1 1 0 0 1 -1 1 H3 a1 1 0 0 1 -1 -1 Z" />
+          <path d="M6.5 14 V10 h3 V14" />
+        </svg>
+      );
+    case "journal":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="2" width="10" height="12" rx="1.2" />
+          <line x1="5.5" y1="5.5" x2="10.5" y2="5.5" />
+          <line x1="5.5" y1="8" x2="10.5" y2="8" />
+          <line x1="5.5" y1="10.5" x2="9" y2="10.5" />
+        </svg>
+      );
+    case "pie":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 2 V8 H14" />
+        </svg>
+      );
+    case "target":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="8" cy="8" r="6" />
+          <circle cx="8" cy="8" r="3" />
+          <circle cx="8" cy="8" r="0.6" fill="currentColor" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="12" height="11" rx="1.2" />
+          <line x1="2" y1="6.5" x2="14" y2="6.5" />
+          <line x1="5" y1="1.5" x2="5" y2="4" />
+          <line x1="11" y1="1.5" x2="11" y2="4" />
+          <polyline points="5.8,10.5 7.2,11.8 10.2,9" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function App() {
+  const location = useLocation();
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [tickers, setTickers] = useState<Array<{ label: string; value: string; change: string }>>([]);
-
   const [tickerLoading, setTickerLoading] = useState(false);
 
   useEffect(() => {
-    // Try real market data from backend first, fallback to Firebase mock
     setTickerLoading(true);
     fetchMarketIndicators()
       .then((data) => {
-        if (data.length > 0) {
-          setTickers(data);
-        } else {
-          return getDashboard().then((d) => setTickers(d.market_indicators ?? []));
-        }
+        if (data.length > 0) setTickers(data);
       })
+      .catch(() => {})
       .finally(() => setTickerLoading(false));
   }, []);
 
@@ -71,11 +119,37 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 overflow-hidden">
-      {/* 상단 네비게이션 */}
-      <header className="flex items-center justify-between px-4 py-1.5 bg-slate-900 border-b border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-white tracking-tight">StockStar</span>
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--bg-deep)" }}>
+      {/* ── Premium Header ── */}
+      <header
+        className="flex items-center justify-between px-5 py-2 flex-shrink-0"
+        style={{
+          background: "rgba(12, 14, 20, 0.95)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "1px solid var(--border-default)",
+        }}
+      >
+        <div className="flex items-center gap-5">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, var(--gold), var(--gold-bright))",
+                boxShadow: "0 2px 8px rgba(212, 165, 116, 0.3)",
+              }}
+            >
+              <span className="text-[10px] font-black" style={{ color: "var(--bg-deep)", fontFamily: "Outfit" }}>S</span>
+            </div>
+            <span
+              className="text-sm font-bold tracking-tight"
+              style={{ fontFamily: "Outfit", color: "var(--text-primary)" }}
+            >
+              Stock<span style={{ color: "var(--gold)" }}>Star</span>
+            </span>
+          </div>
+
+          {/* Navigation */}
           <nav className="flex gap-0.5">
             {navItems.map((item) => (
               <NavLink
@@ -83,76 +157,132 @@ export default function App() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `text-xs px-2.5 py-1 rounded transition-colors font-medium ${
+                  `flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all duration-200 font-medium ${
                     isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      ? ""
+                      : ""
                   }`
                 }
+                style={({ isActive }) => ({
+                  fontFamily: "Outfit",
+                  color: isActive ? "var(--gold-bright)" : "var(--text-secondary)",
+                  background: isActive ? "rgba(212, 165, 116, 0.1)" : "transparent",
+                  border: isActive
+                    ? "1px solid rgba(212, 165, 116, 0.2)"
+                    : "1px solid transparent",
+                })}
               >
-                {item.label}
+                <NavIcon type={item.icon} />
+                <span>{item.label}</span>
               </NavLink>
             ))}
           </nav>
         </div>
+
+        {/* Market Tickers */}
         {tickers.length > 0 && (
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-4">
             {tickers.map((t) => (
-              <div key={t.label} className="flex items-center gap-1 market-ticker">
-                <span className="text-slate-500">{t.label}</span>
-                <span className="text-slate-200">{t.value}</span>
-                <span className={t.change.startsWith('-') ? 'text-red-400' : 'text-green-400'}>{t.change}</span>
+              <div key={t.label} className="flex items-center gap-1.5 market-ticker">
+                <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{t.label}</span>
+                <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{t.value}</span>
+                <span
+                  style={{
+                    color: t.change.startsWith("-") ? "var(--down)" : "var(--up)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {t.change}
+                </span>
               </div>
             ))}
           </div>
         )}
       </header>
 
-      {/* 업데이트/설치 배너 */}
+      {/* ── Update/Install Banner ── */}
       {(installPrompt || waitingWorker) && (
-        <div className="flex items-center justify-between px-5 py-2 bg-blue-900/60 border-b border-blue-700/40 text-sm flex-shrink-0">
-          <span className="text-blue-200">
+        <div
+          className="flex items-center justify-between px-5 py-2 text-sm flex-shrink-0"
+          style={{
+            background: "rgba(212, 165, 116, 0.08)",
+            borderBottom: "1px solid rgba(212, 165, 116, 0.15)",
+          }}
+        >
+          <span style={{ color: "var(--gold-bright)", fontFamily: "DM Sans" }}>
             {waitingWorker ? "새 버전이 준비됐습니다." : "홈 화면에 앱을 설치할 수 있습니다."}
           </span>
           {waitingWorker ? (
-            <button onClick={handleApplyUpdate} className="text-xs px-3 py-1 rounded bg-blue-500 hover:bg-blue-400 text-white">
+            <button
+              onClick={handleApplyUpdate}
+              className="text-xs px-3 py-1 rounded-lg font-semibold transition-all"
+              style={{
+                background: "linear-gradient(135deg, var(--gold), var(--gold-bright))",
+                color: "var(--bg-deep)",
+                fontFamily: "Outfit",
+              }}
+            >
               업데이트 적용
             </button>
           ) : (
-            <button onClick={handleInstallApp} className="text-xs px-3 py-1 rounded bg-blue-500 hover:bg-blue-400 text-white">
+            <button
+              onClick={handleInstallApp}
+              className="text-xs px-3 py-1 rounded-lg font-semibold transition-all"
+              style={{
+                background: "linear-gradient(135deg, var(--gold), var(--gold-bright))",
+                color: "var(--bg-deep)",
+                fontFamily: "Outfit",
+              }}
+            >
               설치
             </button>
           )}
         </div>
       )}
 
-      {/* 메인 콘텐츠 (남은 공간 모두 차지) */}
+      {/* ── Main Content ── */}
       <main className="flex-1 min-h-0 overflow-hidden">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/news" element={<NewsPage />} />
+          <Route path="/journal" element={<JournalPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/edge" element={<EdgePage />} />
+          <Route path="/review" element={<ReviewPage />} />
           <Route path="/news/:newsId" element={<NewsPage />} />
-          <Route path="/stocks" element={<StockPage />} />
-          <Route path="/stocks/:symbol" element={<StockDetailPage />} />
         </Routes>
       </main>
 
-      {/* 모바일 하단 네비게이션 */}
-      <nav className="sm:hidden flex border-t border-slate-800 bg-slate-900 flex-shrink-0">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              `flex-1 text-center py-2.5 text-xs font-medium transition-colors ${
-                isActive ? "text-blue-400" : "text-slate-500"
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
+      {/* ── Mobile Bottom Nav ── */}
+      <nav
+        className="sm:hidden flex flex-shrink-0"
+        style={{
+          background: "rgba(8, 9, 13, 0.96)",
+          backdropFilter: "blur(20px)",
+          borderTop: "1px solid var(--border-default)",
+        }}
+      >
+        {navItems.map((item) => {
+          const isActive = item.end
+            ? location.pathname === item.to
+            : location.pathname.startsWith(item.to);
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors"
+              style={{
+                color: isActive ? "var(--gold)" : "var(--text-muted)",
+                fontFamily: "Outfit",
+                fontSize: 10,
+                fontWeight: isActive ? 600 : 400,
+              }}
+            >
+              <NavIcon type={item.icon} size={16} />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
     </div>
   );

@@ -17,14 +17,14 @@ function regionLabel(code: string): string {
   return geo ? `${geo.flag} ${geo.name}` : code;
 }
 
-const IMPORTANCE_STARS: Record<string, string> = { high: '★★★', medium: '★★', low: '★' };
+const IMPORTANCE_DOTS: Record<string, number> = { high: 3, medium: 2, low: 1 };
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return `${Math.floor(diff / 60_000)}분 전`;
-  if (h < 24) return `${h}시간 전`;
-  return `${Math.floor(h / 24)}일 전`;
+  if (h < 1) return `${Math.floor(diff / 60_000)}m ago`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 export function NewsPage() {
@@ -49,7 +49,6 @@ export function NewsPage() {
   } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  // Load news once on mount — try backend first, fallback to Firebase
   useEffect(() => {
     fetchBackendNews()
       .then((backendItems) => {
@@ -75,9 +74,8 @@ export function NewsPage() {
           );
         }).catch(console.error);
       });
-  }, []); // only on mount, not on newsId change
+  }, []);
 
-  // Sync selectedId when navigating via URL
   useEffect(() => {
     if (newsId && items.length > 0) {
       const match = items.find((item) => item.id === newsId);
@@ -90,7 +88,6 @@ export function NewsPage() {
     [items, selectedId],
   );
 
-  // Clear analysis info when switching news
   useEffect(() => {
     setAnalysisInfo(null);
     setAnalysisError(null);
@@ -102,7 +99,6 @@ export function NewsPage() {
     setAnalysisError(null);
     setAnalysisInfo(null);
     try {
-      // Real AI analysis via backend (OpenAI)
       const aiResult = await analyzeNewsWithAI(selected.id);
       const { token_usage, investment_action, ...rest } = aiResult;
       setItems((current) =>
@@ -113,8 +109,7 @@ export function NewsPage() {
         investment_action: investment_action || "",
       });
     } catch (err: any) {
-      setAnalysisError(err?.message || "AI 분석 실패 — 백엔드 서버가 실행 중인지 확인하세요");
-      // Fallback to mock
+      setAnalysisError(err?.message || "AI analysis failed");
       try {
         const updated = await analyzeNewsItem(selected.id);
         setItems((current) =>
@@ -128,7 +123,6 @@ export function NewsPage() {
     }
   }
 
-  // Load regions on first panel open
   async function openCollectPanel() {
     setShowCollectPanel(true);
     if (regions.length === 0) {
@@ -176,7 +170,6 @@ export function NewsPage() {
     setCollectProgress({ done: codes.length, total: codes.length, current: "", results });
     setIsCollecting(false);
 
-    // Refresh news list and select first item
     try {
       const backendNews = await fetchBackendNews();
       if (backendNews.length > 0) {
@@ -192,14 +185,13 @@ export function NewsPage() {
       setItems(firebaseNews);
       setSelectedId(firebaseNews[0]?.id ?? null);
     }
-    // Notify other pages (Home) to refresh
     broadcastNewsUpdate();
   }
 
   if (!selected) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
-        뉴스를 불러오는 중...
+      <div className="flex items-center justify-center h-full" style={{ background: "var(--bg-deep)", color: "var(--text-muted)", fontFamily: "Outfit", fontSize: 13 }}>
+        Loading news...
       </div>
     );
   }
@@ -207,43 +199,94 @@ export function NewsPage() {
   const originGeo = geocode[selected.origin_country];
 
   return (
-    <div className="flex h-full overflow-hidden bg-slate-950">
+    <div className="flex h-full overflow-hidden" style={{ background: "var(--bg-deep)" }}>
       {/* Left: News List */}
-      <div className="w-[320px] flex-shrink-0 flex flex-col border-r border-slate-800 bg-[#0b1220]">
-        <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
-            News Feed · {items.length}건
+      <div
+        className="w-[340px] flex-shrink-0 flex flex-col"
+        style={{
+          borderRight: "1px solid var(--border-default)",
+          background: "var(--bg-base)",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 py-2.5 flex items-center justify-between gap-2"
+          style={{ borderBottom: "1px solid var(--border-default)" }}
+        >
+          <span style={{
+            fontFamily: "Outfit",
+            fontWeight: 700,
+            fontSize: 11,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase" as const,
+            color: "var(--gold)",
+          }}>
+            NEWS FEED
+            <span
+              className="ml-2 font-mono"
+              style={{
+                fontSize: 10,
+                color: "var(--text-muted)",
+                background: "rgba(212, 165, 116, 0.08)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                border: "1px solid var(--border-subtle)",
+                fontWeight: 500,
+              }}
+            >
+              {items.length}
+            </span>
           </span>
           <button
             type="button"
-            className="text-[10px] px-2 py-1 rounded bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white font-medium transition-colors"
+            className="transition-all"
             onClick={showCollectPanel ? () => setShowCollectPanel(false) : openCollectPanel}
             disabled={isCollecting}
+            style={{
+              fontFamily: "Outfit",
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "4px 12px",
+              borderRadius: 8,
+              background: showCollectPanel ? "rgba(239, 68, 68, 0.08)" : "rgba(56, 217, 169, 0.1)",
+              border: showCollectPanel ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid rgba(56, 217, 169, 0.25)",
+              color: showCollectPanel ? "var(--down)" : "var(--teal)",
+              cursor: isCollecting ? "wait" : "pointer",
+              opacity: isCollecting ? 0.6 : 1,
+            }}
           >
-            {isCollecting ? "수집 중..." : showCollectPanel ? "✕ 닫기" : "🌐 뉴스 수집"}
+            {isCollecting ? "Collecting..." : showCollectPanel ? "CLOSE" : "COLLECT"}
           </button>
         </div>
 
         {/* Collect Panel */}
         {showCollectPanel && (
-          <div className="border-b border-slate-800 bg-[#0a1628]">
-            {/* Region checkboxes */}
-            <div className="px-3 py-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] text-slate-500 font-medium">수집 지역 선택</span>
-                <button onClick={toggleAll} className="text-[10px] text-teal-400 hover:text-teal-300">
-                  {selectedRegions.size === regions.length ? "전체 해제" : "전체 선택"}
+          <div style={{ borderBottom: "1px solid var(--border-default)", background: "var(--bg-elevated)" }}>
+            <div className="px-4 py-2.5">
+              <div className="flex items-center justify-between mb-2">
+                <span style={{ fontFamily: "Outfit", fontSize: 10, fontWeight: 600, color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>
+                  Select Regions
+                </span>
+                <button
+                  onClick={toggleAll}
+                  style={{ fontFamily: "Outfit", fontSize: 10, fontWeight: 600, color: "var(--teal)", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {selectedRegions.size === regions.length ? "Deselect All" : "Select All"}
                 </button>
               </div>
               <div className="flex flex-wrap gap-1">
                 {regions.map((r) => (
                   <label
                     key={r.code}
-                    className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded cursor-pointer border transition-colors ${
-                      selectedRegions.has(r.code)
-                        ? "bg-teal-900/50 border-teal-700 text-teal-200"
-                        : "bg-slate-900 border-slate-700 text-slate-500"
-                    }`}
+                    className="flex items-center gap-1 cursor-pointer transition-colors"
+                    style={{
+                      fontSize: 10,
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      background: selectedRegions.has(r.code) ? "rgba(56, 217, 169, 0.08)" : "rgba(255,255,255, 0.02)",
+                      border: selectedRegions.has(r.code) ? "1px solid rgba(56, 217, 169, 0.25)" : "1px solid var(--border-subtle)",
+                      color: selectedRegions.has(r.code) ? "var(--teal)" : "var(--text-muted)",
+                    }}
                   >
                     <input
                       type="checkbox"
@@ -257,52 +300,67 @@ export function NewsPage() {
               </div>
             </div>
 
-            {/* Progress bar */}
             {(isCollecting || collectProgress.results.length > 0) && (
-              <div className="px-3 py-1.5 border-t border-slate-800/50">
+              <div className="px-4 py-2" style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(212, 165, 116, 0.08)" }}>
                     <div
-                      className="h-full bg-teal-500 rounded-full transition-all duration-300"
-                      style={{ width: `${collectProgress.total > 0 ? (collectProgress.done / collectProgress.total) * 100 : 0}%` }}
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${collectProgress.total > 0 ? (collectProgress.done / collectProgress.total) * 100 : 0}%`,
+                        background: "linear-gradient(90deg, var(--teal), var(--blue))",
+                      }}
                     />
                   </div>
-                  <span className="text-[10px] text-slate-400 flex-shrink-0 w-[60px] text-right">
+                  <span className="font-mono flex-shrink-0 w-[50px] text-right" style={{ fontSize: 10, color: "var(--text-muted)" }}>
                     {collectProgress.done}/{collectProgress.total}
                   </span>
                 </div>
                 {isCollecting && collectProgress.current && (
-                  <div className="text-[10px] text-teal-400">{collectProgress.current} 수집 중...</div>
+                  <div style={{ fontSize: 10, color: "var(--teal)" }}>{collectProgress.current}...</div>
                 )}
                 {!isCollecting && collectProgress.results.length > 0 && (
-                  <div className="text-[10px] text-teal-300">
-                    {collectProgress.results.reduce((s, r) => s + r.fetched, 0)}건 수집 →{" "}
-                    <strong>{collectProgress.results.reduce((s, r) => s + r.inserted, 0)}건 신규</strong>
-                    {" "}(DB {collectProgress.results[collectProgress.results.length - 1]?.total_in_db ?? 0}건)
+                  <div style={{ fontSize: 10, color: "var(--teal)" }}>
+                    {collectProgress.results.reduce((s, r) => s + r.fetched, 0)} fetched /&nbsp;
+                    <strong>{collectProgress.results.reduce((s, r) => s + r.inserted, 0)} new</strong>
+                    &nbsp;(DB {collectProgress.results[collectProgress.results.length - 1]?.total_in_db ?? 0})
                   </div>
                 )}
               </div>
             )}
 
-            {/* Start button */}
-            <div className="px-3 py-2 border-t border-slate-800/50">
+            <div className="px-4 py-2.5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
               <button
                 type="button"
-                className="w-full text-[11px] py-1.5 rounded bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white font-medium transition-colors"
+                className="w-full py-2 transition-all"
                 onClick={handleCollect}
                 disabled={isCollecting || selectedRegions.size === 0}
+                style={{
+                  fontFamily: "Outfit",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  background: isCollecting ? "rgba(56, 217, 169, 0.06)" : "rgba(56, 217, 169, 0.12)",
+                  border: "1px solid rgba(56, 217, 169, 0.3)",
+                  color: "var(--teal)",
+                  cursor: isCollecting || selectedRegions.size === 0 ? "not-allowed" : "pointer",
+                  opacity: isCollecting || selectedRegions.size === 0 ? 0.4 : 1,
+                }}
               >
                 {isCollecting
-                  ? `수집 중... (${collectProgress.done}/${collectProgress.total})`
-                  : `${selectedRegions.size}개 지역 수집 시작`}
+                  ? `Collecting... (${collectProgress.done}/${collectProgress.total})`
+                  : `Collect ${selectedRegions.size} Region${selectedRegions.size > 1 ? 's' : ''}`}
               </button>
             </div>
           </div>
         )}
+
+        {/* News List */}
         <div className="flex-1 overflow-y-auto news-panel-scroll">
           {items.map((item) => {
             const geo = geocode[item.origin_country];
             const isActive = item.id === selected.id;
+            const dots = IMPORTANCE_DOTS[item.importance] ?? 2;
             return (
               <button
                 key={item.id}
@@ -314,30 +372,63 @@ export function NewsPage() {
                 }}
               >
                 {/* Line 1: meta */}
-                <div className="flex items-center gap-1.5 text-[11px] mb-0.5">
-                  <span className="text-yellow-500">{IMPORTANCE_STARS[item.importance] ?? '★★'}</span>
-                  <span>{geo?.flag ?? '🌐'}</span>
-                  <span className="text-blue-400 truncate">{item.speaker?.name || geo?.name || item.origin_country}</span>
-                  <span className="ml-auto text-slate-600 flex-shrink-0">{timeAgo(item.published_at)}</span>
-                  <span className={`px-1 py-px rounded text-[9px] font-bold flex-shrink-0 ${
-                    item.analysis_status === '분석 완료'
-                      ? 'bg-green-900/60 text-green-400'
-                      : 'bg-slate-800 text-slate-500'
-                  }`}>
-                    {item.analysis_status === '분석 완료' ? '완료' : '미분석'}
+                <div className="flex items-center gap-1.5 mb-0.5" style={{ fontSize: 11 }}>
+                  <span className="flex gap-0.5">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="inline-block w-1 h-1 rounded-full"
+                        style={{
+                          background: i < dots
+                            ? dots === 3 ? "var(--down)" : "var(--gold)"
+                            : "rgba(212, 165, 116, 0.08)",
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span>{geo?.flag ?? '\u{1F310}'}</span>
+                  <span className="truncate" style={{ color: "var(--gold-dim)", fontWeight: 500 }}>
+                    {item.speaker?.name || geo?.name || item.origin_country}
+                  </span>
+                  <span className="ml-auto flex-shrink-0 font-mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                    {timeAgo(item.published_at)}
+                  </span>
+                  <span
+                    className="flex-shrink-0 font-mono font-bold"
+                    style={{
+                      fontSize: 8,
+                      padding: "1px 5px",
+                      borderRadius: 4,
+                      background: item.analysis_status === '\uBD84\uC11D \uC644\uB8CC'
+                        ? "rgba(16, 185, 129, 0.1)" : "rgba(212, 165, 116, 0.06)",
+                      border: item.analysis_status === '\uBD84\uC11D \uC644\uB8CC'
+                        ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid var(--border-subtle)",
+                      color: item.analysis_status === '\uBD84\uC11D \uC644\uB8CC'
+                        ? "var(--up)" : "var(--text-muted)",
+                    }}
+                  >
+                    {item.analysis_status === '\uBD84\uC11D \uC644\uB8CC' ? 'DONE' : 'RAW'}
                   </span>
                 </div>
                 {/* Line 2: title */}
-                <div className="text-[12px] text-slate-200 leading-snug truncate mb-0.5">
+                <div
+                  className="truncate mb-0.5"
+                  style={{
+                    fontSize: 12,
+                    color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                    fontWeight: isActive ? 600 : 400,
+                    lineHeight: 1.4,
+                  }}
+                >
                   {item.title}
                 </div>
                 {/* Line 3: tags */}
-                <div className="flex items-center gap-1 text-[10px] flex-wrap">
+                <div className="flex items-center gap-1 flex-wrap" style={{ fontSize: 10 }}>
                   {(item.positive_industries || []).slice(0, 2).map((ind) => (
-                    <span key={ind} className="text-emerald-400">{ind}↑</span>
+                    <span key={ind} style={{ color: "var(--up)" }}>{ind}\u2191</span>
                   ))}
                   {(item.negative_industries || []).slice(0, 2).map((ind) => (
-                    <span key={ind} className="text-red-400">{ind}↓</span>
+                    <span key={ind} style={{ color: "var(--down)" }}>{ind}\u2193</span>
                   ))}
                 </div>
               </button>
@@ -347,18 +438,40 @@ export function NewsPage() {
       </div>
 
       {/* Right: Detail Panel */}
-      <div className="flex-1 overflow-y-auto p-5 min-w-0">
+      <div className="flex-1 overflow-y-auto p-6 min-w-0">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-start justify-between gap-4 mb-5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-900/60 text-blue-300 font-bold">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                style={{
+                  fontFamily: "Outfit",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "3px 10px",
+                  borderRadius: 6,
+                  background: "rgba(59, 158, 255, 0.1)",
+                  border: "1px solid rgba(59, 158, 255, 0.2)",
+                  color: "var(--blue)",
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase" as const,
+                }}
+              >
                 {selected.event_type}
               </span>
-              <span className="text-[11px] text-slate-500">{selected.source}</span>
-              <span className="text-[11px] text-slate-600">{timeAgo(selected.published_at)}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{selected.source}</span>
+              <span className="font-mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>{timeAgo(selected.published_at)}</span>
             </div>
-            <h2 className="text-lg font-bold text-slate-100 leading-snug">
+            <h2
+              className="leading-snug"
+              style={{
+                fontFamily: "Outfit",
+                fontSize: 20,
+                fontWeight: 700,
+                color: "var(--text-primary)",
+                letterSpacing: "-0.02em",
+              }}
+            >
               {selected.title}
             </h2>
           </div>
@@ -368,127 +481,232 @@ export function NewsPage() {
                 href={selected.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium transition-colors"
+                className="transition-all"
+                style={{
+                  fontFamily: "Outfit",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  background: "rgba(212, 165, 116, 0.06)",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-secondary)",
+                }}
               >
-                원본 기사 ↗
+                Source \u2197
               </a>
             )}
             <button
-              className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium transition-colors"
+              className="transition-all"
               type="button"
               onClick={handleAnalyze}
               disabled={isAnalyzing}
+              style={{
+                fontFamily: "Outfit",
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "6px 16px",
+                borderRadius: 8,
+                background: isAnalyzing
+                  ? "rgba(59, 158, 255, 0.06)"
+                  : "linear-gradient(135deg, var(--blue), #6366f1)",
+                border: isAnalyzing ? "1px solid rgba(59, 158, 255, 0.2)" : "none",
+                color: isAnalyzing ? "var(--blue)" : "#fff",
+                cursor: isAnalyzing ? "wait" : "pointer",
+                boxShadow: isAnalyzing ? "none" : "0 2px 12px rgba(59, 158, 255, 0.3)",
+              }}
             >
-              {isAnalyzing ? "분석 중..." : "AI 분석"}
+              {isAnalyzing ? "Analyzing..." : "AI Analysis"}
             </button>
           </div>
         </div>
 
-        {/* Analysis Info: token usage + cost */}
+        {/* Analysis Info */}
         {analysisError && (
-          <div className="mb-3 px-3 py-2 rounded bg-red-900/30 border border-red-800/40 text-[11px] text-red-300">
+          <div
+            className="mb-4 px-4 py-2.5 rounded-lg"
+            style={{
+              background: "rgba(239, 68, 68, 0.06)",
+              border: "1px solid rgba(239, 68, 68, 0.15)",
+              fontSize: 11,
+              color: "var(--down)",
+            }}
+          >
             {analysisError}
           </div>
         )}
         {analysisInfo?.total_tokens && (
-          <div className="mb-3 px-3 py-2 rounded bg-slate-900 border border-slate-800 flex items-center gap-4 text-[11px]">
-            <span className="text-slate-500">모델: <span className="text-slate-300">{analysisInfo.model}</span></span>
-            <span className="text-slate-500">토큰: <span className="text-slate-300">{analysisInfo.input_tokens?.toLocaleString()}↑ {analysisInfo.output_tokens?.toLocaleString()}↓ = {analysisInfo.total_tokens?.toLocaleString()}</span></span>
-            <span className="text-slate-500">비용: <span className="text-green-400">${analysisInfo.cost_usd?.toFixed(4)}</span> <span className="text-slate-600">(₩{analysisInfo.cost_krw?.toFixed(1)})</span></span>
+          <div
+            className="mb-4 px-4 py-2.5 rounded-lg flex items-center gap-4 font-mono"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              fontSize: 11,
+            }}
+          >
+            <span style={{ color: "var(--text-muted)" }}>Model: <span style={{ color: "var(--text-secondary)" }}>{analysisInfo.model}</span></span>
+            <span style={{ color: "var(--text-muted)" }}>Tokens: <span style={{ color: "var(--text-secondary)" }}>{analysisInfo.input_tokens?.toLocaleString()}\u2191 {analysisInfo.output_tokens?.toLocaleString()}\u2193 = {analysisInfo.total_tokens?.toLocaleString()}</span></span>
+            <span style={{ color: "var(--text-muted)" }}>Cost: <span style={{ color: "var(--up)" }}>${analysisInfo.cost_usd?.toFixed(4)}</span> <span style={{ color: "var(--text-muted)" }}>(\u20A9{analysisInfo.cost_krw?.toFixed(1)})</span></span>
           </div>
         )}
 
         {/* Speaker + Origin */}
-        <div className="flex items-center gap-2 mb-4 text-sm">
-          <span className="text-lg">{originGeo?.flag ?? '🌐'}</span>
-          <span className="text-blue-400 font-medium">{selected.speaker?.name}</span>
-          <span className="text-slate-600">·</span>
-          <span className="text-slate-400">{originGeo?.name ?? selected.origin_country}</span>
+        <div className="flex items-center gap-2 mb-5" style={{ fontSize: 14 }}>
+          <span style={{ fontSize: 20 }}>{originGeo?.flag ?? '\u{1F310}'}</span>
+          <span style={{ color: "var(--gold)", fontFamily: "Outfit", fontWeight: 600 }}>{selected.speaker?.name}</span>
+          <span style={{ color: "var(--border-strong)" }}>\u00B7</span>
+          <span style={{ color: "var(--text-secondary)" }}>{originGeo?.name ?? selected.origin_country}</span>
         </div>
 
         {/* Summary */}
-        <p className="text-sm text-slate-300 leading-relaxed mb-4 border-l-2 border-slate-700 pl-3">
+        <p
+          className="mb-5 pl-4"
+          style={{
+            fontSize: 14,
+            color: "var(--text-secondary)",
+            lineHeight: 1.7,
+            borderLeft: "2px solid var(--border-strong)",
+          }}
+        >
           {selected.summary}
         </p>
 
-        {/* Tags Grid: Industries + Countries */}
-        <div className="flex flex-wrap gap-1.5 mb-5">
+        {/* Tags Grid */}
+        <div className="flex flex-wrap gap-1.5 mb-6">
           {selected.positive_industries.map((ind) => (
-            <span key={ind} className="text-[11px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-800/40">
-              ↑ {ind}
+            <span
+              key={ind}
+              style={{
+                fontSize: 11,
+                padding: "3px 10px",
+                borderRadius: 6,
+                background: "rgba(16, 185, 129, 0.08)",
+                border: "1px solid rgba(16, 185, 129, 0.2)",
+                color: "var(--up)",
+              }}
+            >
+              \u2191 {ind}
             </span>
           ))}
           {selected.negative_industries.map((ind) => (
-            <span key={ind} className="text-[11px] px-2 py-0.5 rounded bg-red-900/40 text-red-300 border border-red-800/40">
-              ↓ {ind}
+            <span
+              key={ind}
+              style={{
+                fontSize: 11,
+                padding: "3px 10px",
+                borderRadius: 6,
+                background: "rgba(239, 68, 68, 0.08)",
+                border: "1px solid rgba(239, 68, 68, 0.2)",
+                color: "var(--down)",
+              }}
+            >
+              \u2193 {ind}
             </span>
           ))}
-          <span className="w-px h-4 bg-slate-700 self-center mx-1" />
+          {(selected.positive_industries.length > 0 || selected.negative_industries.length > 0) &&
+            (selected.affected_countries || []).length > 0 && (
+              <span className="w-px h-5 self-center mx-1" style={{ background: "var(--border-default)" }} />
+            )}
           {(selected.affected_countries || []).map((ac) => (
             <span
               key={ac.country}
-              className={`text-[11px] px-2 py-0.5 rounded border ${
-                ac.direction === 'positive'
-                  ? 'bg-green-900/30 text-green-400 border-green-800/40'
-                  : ac.direction === 'negative'
-                  ? 'bg-red-900/30 text-red-400 border-red-800/40'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
-              }`}
+              style={{
+                fontSize: 11,
+                padding: "3px 10px",
+                borderRadius: 6,
+                background: ac.direction === 'positive' ? "rgba(16, 185, 129, 0.06)" : ac.direction === 'negative' ? "rgba(239, 68, 68, 0.06)" : "rgba(212, 165, 116, 0.04)",
+                border: `1px solid ${ac.direction === 'positive' ? "rgba(16, 185, 129, 0.15)" : ac.direction === 'negative' ? "rgba(239, 68, 68, 0.15)" : "var(--border-subtle)"}`,
+                color: ac.direction === 'positive' ? "var(--up)" : ac.direction === 'negative' ? "var(--down)" : "var(--text-muted)",
+              }}
             >
-              {geocode[ac.country]?.flag} {geocode[ac.country]?.name ?? ac.country} {ac.direction === 'positive' ? '↑' : ac.direction === 'negative' ? '↓' : '—'}
+              {geocode[ac.country]?.flag} {geocode[ac.country]?.name ?? ac.country} {ac.direction === 'positive' ? '\u2191' : ac.direction === 'negative' ? '\u2193' : '\u2014'}
             </span>
           ))}
         </div>
 
         {/* Detail Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-          {/* AI Summary */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">AI 해석</h4>
-            <p className="text-[13px] text-slate-300 leading-relaxed">{selected.ai_summary}</p>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
+          <DetailCard title="AI INTERPRETATION" accent="var(--blue)">
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>{selected.ai_summary}</p>
+          </DetailCard>
 
-          {/* Investment Action */}
           {analysisInfo?.investment_action && (
-            <div className="bg-blue-950 border border-blue-800/40 rounded-lg p-4 lg:col-span-2">
-              <h4 className="text-[11px] font-bold text-blue-400 uppercase tracking-wide mb-2">투자 액션</h4>
-              <p className="text-[13px] text-slate-200 leading-relaxed">{analysisInfo.investment_action}</p>
-            </div>
+            <DetailCard title="INVESTMENT ACTION" accent="var(--gold)" className="lg:col-span-2">
+              <p style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.7 }}>{analysisInfo.investment_action}</p>
+            </DetailCard>
           )}
 
-          {/* Counter Arguments */}
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">반대 논리</h4>
-            <ul className="space-y-1.5">
+          <DetailCard title="COUNTER ARGUMENTS" accent="var(--warning)">
+            <ul className="space-y-2">
               {selected.counter_arguments.map((point, i) => (
-                <li key={i} className="flex gap-2 text-[13px] text-slate-400 leading-snug">
-                  <span className="text-slate-600 flex-shrink-0">•</span>
+                <li key={i} className="flex gap-2" style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                  <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>\u2022</span>
                   {point}
                 </li>
               ))}
             </ul>
-          </div>
+          </DetailCard>
         </div>
 
         {/* Related Symbols */}
-        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mb-4">
-          <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">관련 종목</h4>
+        <DetailCard title="RELATED STOCKS" accent="var(--teal)">
           <div className="flex flex-wrap gap-2">
             {selected.related_symbols.map((symbol) => (
               <button
                 key={symbol}
                 onClick={() => navigate(`/stocks/${symbol}`)}
-                className="text-[12px] px-2.5 py-1 rounded bg-slate-800 text-blue-400 hover:bg-slate-700 hover:text-blue-300 border border-slate-700 transition-colors cursor-pointer"
+                className="transition-all"
+                style={{
+                  fontFamily: "JetBrains Mono",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  background: "rgba(212, 165, 116, 0.04)",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--gold)",
+                  cursor: "pointer",
+                }}
               >
                 {symbol}
               </button>
             ))}
           </div>
-        </div>
+        </DetailCard>
 
         {/* My Memo */}
-        <UserMemoBox memoKey={`news:${selected.id}`} />
+        <div className="mt-5">
+          <UserMemoBox memoKey={`news:${selected.id}`} />
+        </div>
       </div>
+    </div>
+  );
+}
+
+function DetailCard({ title, accent, children, className = "" }: { title: string; accent: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`p-4 ${className}`}
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-default)",
+        borderRadius: "var(--radius-md)",
+      }}
+    >
+      <h4
+        className="mb-2.5"
+        style={{
+          fontFamily: "Outfit",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase" as const,
+          color: accent,
+        }}
+      >
+        {title}
+      </h4>
+      {children}
     </div>
   );
 }
@@ -498,7 +716,6 @@ function UserMemoBox({ memoKey }: { memoKey: string }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(memo);
 
-  // Sync draft when memoKey changes
   useEffect(() => {
     setDraft(memo);
     setEditing(false);
@@ -510,15 +727,39 @@ function UserMemoBox({ memoKey }: { memoKey: string }) {
   }
 
   return (
-    <div className="bg-slate-900 border border-amber-900/40 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-[11px] font-bold text-amber-400 uppercase tracking-wide">내 메모</h4>
+    <div
+      className="p-4"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid rgba(212, 165, 116, 0.2)",
+        borderRadius: "var(--radius-md)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-2.5">
+        <h4 style={{
+          fontFamily: "Outfit",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase" as const,
+          color: "var(--gold)",
+        }}>
+          MY MEMO
+        </h4>
         {!editing && (
           <button
             onClick={() => { setDraft(memo); setEditing(true); }}
-            className="text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+            style={{
+              fontFamily: "Outfit",
+              fontSize: 10,
+              fontWeight: 600,
+              color: "var(--text-muted)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
           >
-            {memo ? '수정' : '작성'}
+            {memo ? 'Edit' : 'Write'}
           </button>
         )}
       </div>
@@ -527,29 +768,57 @@ function UserMemoBox({ memoKey }: { memoKey: string }) {
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="이 뉴스에 대한 내 생각, 투자 판단 메모..."
-            className="w-full h-24 bg-slate-800 border border-slate-700 rounded p-2 text-[12px] text-slate-200 placeholder-slate-600 resize-none focus:outline-none focus:border-amber-700 transition-colors"
+            placeholder="Write your thoughts about this news..."
+            className="w-full h-24 p-3 resize-none focus:outline-none transition-colors"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-default)",
+              borderRadius: 8,
+              fontSize: 12,
+              color: "var(--text-primary)",
+              fontFamily: "DM Sans",
+            }}
             autoFocus
           />
           <div className="flex gap-2 mt-2 justify-end">
             <button
               onClick={() => setEditing(false)}
-              className="text-[11px] px-2.5 py-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
+              style={{
+                fontFamily: "Outfit",
+                fontSize: 11,
+                fontWeight: 500,
+                padding: "5px 12px",
+                borderRadius: 8,
+                background: "none",
+                border: "none",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+              }}
             >
-              취소
+              Cancel
             </button>
             <button
               onClick={handleSave}
-              className="text-[11px] px-2.5 py-1 rounded bg-amber-700 hover:bg-amber-600 text-white font-medium transition-colors"
+              style={{
+                fontFamily: "Outfit",
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "5px 14px",
+                borderRadius: 8,
+                background: "rgba(212, 165, 116, 0.15)",
+                border: "1px solid rgba(212, 165, 116, 0.3)",
+                color: "var(--gold-bright)",
+                cursor: "pointer",
+              }}
             >
-              저장
+              Save
             </button>
           </div>
         </div>
       ) : memo ? (
-        <p className="text-[12px] text-slate-300 leading-relaxed whitespace-pre-wrap">{memo}</p>
+        <p className="whitespace-pre-wrap" style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>{memo}</p>
       ) : (
-        <p className="text-[11px] text-slate-600 italic">메모가 없습니다. '작성'을 눌러 메모를 남겨보세요.</p>
+        <p style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>No memo yet. Click 'Write' to add notes.</p>
       )}
     </div>
   );
