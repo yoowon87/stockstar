@@ -12,3 +12,5 @@ firebase-debug.log
 *.pyc
 .env
 backend/.env
+.vercel
+.env*.local
