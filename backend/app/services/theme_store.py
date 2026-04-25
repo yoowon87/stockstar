@@ -183,6 +183,56 @@ def cleanup_old_snapshots(days: int = 30) -> int:
 
 # ───── Realtime scores ─────
 
+_UPSERT_REALTIME_SQL = """
+INSERT INTO realtime_theme_scores (
+    theme_id, updated_at, total_amount, avg_change, rising_ratio,
+    score, rank, is_confirmed,
+    leader_code, leader_name, leader_change,
+    news_count_24h, stocks_data
+) VALUES (%s, now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+ON CONFLICT (theme_id) DO UPDATE SET
+    updated_at = now(),
+    total_amount = EXCLUDED.total_amount,
+    avg_change = EXCLUDED.avg_change,
+    rising_ratio = EXCLUDED.rising_ratio,
+    score = EXCLUDED.score,
+    rank = EXCLUDED.rank,
+    is_confirmed = EXCLUDED.is_confirmed,
+    leader_code = EXCLUDED.leader_code,
+    leader_name = EXCLUDED.leader_name,
+    leader_change = EXCLUDED.leader_change,
+    news_count_24h = EXCLUDED.news_count_24h,
+    stocks_data = EXCLUDED.stocks_data
+"""
+
+
+def upsert_realtime_scores_bulk(items: list[dict[str, Any]]) -> None:
+    """Single-connection bulk upsert. `items` = list of dicts with keys:
+    theme_id, score (dict), rank, is_confirmed, news_count_24h, stocks_data.
+    """
+    if not items:
+        return
+    rows = [
+        (
+            it["theme_id"],
+            it["score"]["total_amount"],
+            it["score"]["avg_change"],
+            it["score"]["rising_ratio"],
+            it["score"]["score"],
+            it["rank"],
+            it["is_confirmed"],
+            it["score"]["leader_code"],
+            it["score"]["leader_name"],
+            it["score"]["leader_change"],
+            it["news_count_24h"],
+            json.dumps(it["stocks_data"]),
+        )
+        for it in items
+    ]
+    with get_connection() as conn:
+        conn.executemany(_UPSERT_REALTIME_SQL, rows)
+
+
 def upsert_realtime_score(
     theme_id: str,
     score: dict[str, Any],
@@ -191,42 +241,15 @@ def upsert_realtime_score(
     news_count_24h: int,
     stocks_data: list[dict[str, Any]],
 ) -> None:
-    with get_connection() as conn:
-        conn.execute(
-            """INSERT INTO realtime_theme_scores (
-                   theme_id, updated_at, total_amount, avg_change, rising_ratio,
-                   score, rank, is_confirmed,
-                   leader_code, leader_name, leader_change,
-                   news_count_24h, stocks_data
-               ) VALUES (?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
-               ON CONFLICT (theme_id) DO UPDATE SET
-                   updated_at = now(),
-                   total_amount = EXCLUDED.total_amount,
-                   avg_change = EXCLUDED.avg_change,
-                   rising_ratio = EXCLUDED.rising_ratio,
-                   score = EXCLUDED.score,
-                   rank = EXCLUDED.rank,
-                   is_confirmed = EXCLUDED.is_confirmed,
-                   leader_code = EXCLUDED.leader_code,
-                   leader_name = EXCLUDED.leader_name,
-                   leader_change = EXCLUDED.leader_change,
-                   news_count_24h = EXCLUDED.news_count_24h,
-                   stocks_data = EXCLUDED.stocks_data""",
-            (
-                theme_id,
-                score["total_amount"],
-                score["avg_change"],
-                score["rising_ratio"],
-                score["score"],
-                rank,
-                is_confirmed,
-                score["leader_code"],
-                score["leader_name"],
-                score["leader_change"],
-                news_count_24h,
-                json.dumps(stocks_data),
-            ),
-        )
+    """Single-row variant; prefer `upsert_realtime_scores_bulk` for cron."""
+    upsert_realtime_scores_bulk([{
+        "theme_id": theme_id,
+        "score": score,
+        "rank": rank,
+        "is_confirmed": is_confirmed,
+        "news_count_24h": news_count_24h,
+        "stocks_data": stocks_data,
+    }])
 
 
 def get_realtime_radar(top_n: int = 10) -> list[dict[str, Any]]:
@@ -267,6 +290,51 @@ def get_realtime_radar(top_n: int = 10) -> list[dict[str, Any]]:
 
 # ───── Daily scores (calendar heatmap) ─────
 
+_UPSERT_DAILY_SQL = """
+INSERT INTO daily_theme_scores (
+    date, theme_id, total_amount, avg_change, rising_ratio,
+    score, rank, is_confirmed,
+    leader_code, leader_name, leader_change, rising_stocks
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+ON CONFLICT (date, theme_id) DO UPDATE SET
+    total_amount = EXCLUDED.total_amount,
+    avg_change = EXCLUDED.avg_change,
+    rising_ratio = EXCLUDED.rising_ratio,
+    score = EXCLUDED.score,
+    rank = EXCLUDED.rank,
+    is_confirmed = EXCLUDED.is_confirmed,
+    leader_code = EXCLUDED.leader_code,
+    leader_name = EXCLUDED.leader_name,
+    leader_change = EXCLUDED.leader_change,
+    rising_stocks = EXCLUDED.rising_stocks
+"""
+
+
+def upsert_daily_scores_bulk(date_iso: str, items: list[dict[str, Any]]) -> None:
+    """Bulk variant. `items` = list of {theme_id, score, rank, is_confirmed}."""
+    if not items:
+        return
+    rows = [
+        (
+            date_iso,
+            it["theme_id"],
+            it["score"]["total_amount"],
+            it["score"]["avg_change"],
+            it["score"]["rising_ratio"],
+            it["score"]["score"],
+            it["rank"],
+            it["is_confirmed"],
+            it["score"]["leader_code"],
+            it["score"]["leader_name"],
+            it["score"]["leader_change"],
+            json.dumps(it["score"].get("rising_stocks", [])),
+        )
+        for it in items
+    ]
+    with get_connection() as conn:
+        conn.executemany(_UPSERT_DAILY_SQL, rows)
+
+
 def upsert_daily_score(
     date_iso: str,
     theme_id: str,
@@ -274,39 +342,9 @@ def upsert_daily_score(
     rank: int,
     is_confirmed: bool,
 ) -> None:
-    with get_connection() as conn:
-        conn.execute(
-            """INSERT INTO daily_theme_scores (
-                   date, theme_id, total_amount, avg_change, rising_ratio,
-                   score, rank, is_confirmed,
-                   leader_code, leader_name, leader_change, rising_stocks
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
-               ON CONFLICT (date, theme_id) DO UPDATE SET
-                   total_amount = EXCLUDED.total_amount,
-                   avg_change = EXCLUDED.avg_change,
-                   rising_ratio = EXCLUDED.rising_ratio,
-                   score = EXCLUDED.score,
-                   rank = EXCLUDED.rank,
-                   is_confirmed = EXCLUDED.is_confirmed,
-                   leader_code = EXCLUDED.leader_code,
-                   leader_name = EXCLUDED.leader_name,
-                   leader_change = EXCLUDED.leader_change,
-                   rising_stocks = EXCLUDED.rising_stocks""",
-            (
-                date_iso,
-                theme_id,
-                score["total_amount"],
-                score["avg_change"],
-                score["rising_ratio"],
-                score["score"],
-                rank,
-                is_confirmed,
-                score["leader_code"],
-                score["leader_name"],
-                score["leader_change"],
-                json.dumps(score.get("rising_stocks", [])),
-            ),
-        )
+    upsert_daily_scores_bulk(date_iso, [{
+        "theme_id": theme_id, "score": score, "rank": rank, "is_confirmed": is_confirmed,
+    }])
 
 
 def calendar_top_per_day(start_date: str, end_date: str) -> list[dict[str, Any]]:

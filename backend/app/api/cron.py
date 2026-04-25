@@ -100,15 +100,18 @@ def score_themes(request: Request) -> dict[str, Any]:
         })
 
     scored.sort(key=lambda x: x["score_dict"]["score"], reverse=True)
-    for rank_idx, item in enumerate(scored, start=1):
-        theme_store.upsert_realtime_score(
-            theme_id=item["theme_id"],
-            score=item["score_dict"],
-            rank=rank_idx,
-            is_confirmed=item["is_confirmed"],
-            news_count_24h=item["news_count_24h"],
-            stocks_data=item["stock_data"],
-        )
+    bulk_items = [
+        {
+            "theme_id": item["theme_id"],
+            "score": item["score_dict"],
+            "rank": rank_idx,
+            "is_confirmed": item["is_confirmed"],
+            "news_count_24h": item["news_count_24h"],
+            "stocks_data": item["stock_data"],
+        }
+        for rank_idx, item in enumerate(scored, start=1)
+    ]
+    theme_store.upsert_realtime_scores_bulk(bulk_items)
 
     return {
         "ok": True,
@@ -197,14 +200,16 @@ def daily_snapshot(request: Request) -> dict[str, Any]:
         scored.append({"theme_id": t["id"], "score_dict": score})
 
     scored.sort(key=lambda x: x["score_dict"]["score"], reverse=True)
-    for rank_idx, item in enumerate(scored, start=1):
-        theme_store.upsert_daily_score(
-            date_iso=today,
-            theme_id=item["theme_id"],
-            score=item["score_dict"],
-            rank=rank_idx,
-            is_confirmed=item["score_dict"]["is_score_confirmed"],
-        )
+    bulk_items = [
+        {
+            "theme_id": item["theme_id"],
+            "score": item["score_dict"],
+            "rank": rank_idx,
+            "is_confirmed": item["score_dict"]["is_score_confirmed"],
+        }
+        for rank_idx, item in enumerate(scored, start=1)
+    ]
+    theme_store.upsert_daily_scores_bulk(today, bulk_items)
 
     # housekeeping: trim old snapshots
     deleted = theme_store.cleanup_old_snapshots(days=30)
