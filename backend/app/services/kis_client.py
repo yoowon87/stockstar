@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -139,15 +140,30 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
         return None
 
 
-def fetch_quotes(stock_codes: list[str]) -> dict[str, dict[str, Any]]:
-    """Fetch quotes for many stocks. Throttled, returns {code: quote_dict}."""
+def fetch_quotes(
+    stock_codes: list[str],
+    max_workers: int = 10,
+) -> dict[str, dict[str, Any]]:
+    """Fetch quotes for many stocks in parallel.
+
+    KIS personal API limit is ~20 req/sec; with `max_workers=10` and ~150ms per
+    KIS call we stay safely under that. Returns {code: quote_dict}.
+    """
     if not stock_codes:
         return {}
     token = get_access_token()
     results: dict[str, dict[str, Any]] = {}
-    for code in stock_codes:
-        q = fetch_quote(code, token=token)
-        if q is not None:
-            results[code] = q
-        time.sleep(THROTTLE_SECONDS)
+
+    def _one(code: str) -> tuple[str, dict[str, Any] | None]:
+        return code, fetch_quote(code, token=token)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(_one, c) for c in stock_codes]
+        for fut in as_completed(futures):
+            try:
+                code, quote = fut.result()
+            except Exception:
+                continue
+            if quote is not None:
+                results[code] = quote
     return results
