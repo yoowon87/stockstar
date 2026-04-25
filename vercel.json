@@ -9,7 +9,10 @@
   "functions": {
     "api/index.py": {
       "includeFiles": "backend/**",
-      "maxDuration": 10
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/daily-snapshot", "schedule": "35 6 * * 1-5" }
+  ]
 }

@@ -1,0 +1,25 @@
+name: Theme Radar — 5min poll (stocks + score)
+
+on:
+  schedule:
+    # KST 09:00–15:30 = UTC 00:00–06:30, every 5 min, weekdays
+    - cron: '*/5 0-6 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  poll-and-score:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll stocks (KIS quotes -> snapshots)
+        run: |
+          curl --fail-with-body -X POST \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --max-time 60 \
+               https://stockstar-ten.vercel.app/api/cron/poll-stocks
+
+      - name: Score themes (calculate + upsert realtime)
+        run: |
+          curl --fail-with-body -X POST \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --max-time 60 \
+               https://stockstar-ten.vercel.app/api/cron/score-themes

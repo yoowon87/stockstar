@@ -8,6 +8,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.cron import router as cron_router
 from app.api.dashboard import router as dashboard_router
 from app.api.edge import router as edge_router
 from app.api.journal import router as journal_router
@@ -16,6 +17,7 @@ from app.api.portfolio import router as portfolio_router
 from app.api.review import router as review_router
 from app.api.routine import router as routine_router
 from app.api.stocks import router as stocks_router
+from app.api.theme import router as theme_router
 
 
 app = FastAPI(
@@ -41,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(cron_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(edge_router, prefix="/api")
 app.include_router(journal_router, prefix="/api")
@@ -49,6 +52,7 @@ app.include_router(portfolio_router, prefix="/api")
 app.include_router(review_router, prefix="/api")
 app.include_router(routine_router, prefix="/api")
 app.include_router(stocks_router, prefix="/api")
+app.include_router(theme_router, prefix="/api")
 
 
 @app.get("/health")

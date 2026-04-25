@@ -7,6 +7,11 @@ import { JournalPage } from "./pages/JournalPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { EdgePage } from "./pages/EdgePage";
 import { ReviewPage } from "./pages/ReviewPage";
+import { ThemeRadarPage } from "./pages/ThemeRadarPage";
+import { ThemeCalendarPage } from "./pages/ThemeCalendarPage";
+import { ThemeDetailPage } from "./pages/ThemeDetailPage";
+import { ThemeHistoryPage } from "./pages/ThemeHistoryPage";
+import { ThemeAdminPage } from "./pages/ThemeAdminPage";
 import { fetchMarketIndicators } from "./services/backendApi";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -20,6 +25,7 @@ const navItems = [
   { to: "/portfolio", label: "Portfolio", icon: "pie" },
   { to: "/edge", label: "Edge", icon: "target" },
   { to: "/review", label: "Review", icon: "calendar" },
+  { to: "/theme-radar", label: "Radar", icon: "radar", accent: true },
 ];
 
 function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
@@ -64,6 +70,15 @@ function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
           <line x1="5" y1="1.5" x2="5" y2="4" />
           <line x1="11" y1="1.5" x2="11" y2="4" />
           <polyline points="5.8,10.5 7.2,11.8 10.2,9" />
+        </svg>
+      );
+    case "radar":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+          <circle cx="8" cy="8" r="6.5" strokeDasharray="2 2" />
+          <circle cx="8" cy="8" r="3.5" strokeDasharray="2 2" />
+          <line x1="8" y1="8" x2="13" y2="4" />
+          <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
         </svg>
       );
     default:
@@ -249,6 +264,11 @@ export default function App() {
           <Route path="/edge" element={<EdgePage />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/news/:newsId" element={<NewsPage />} />
+          <Route path="/theme-radar" element={<ThemeRadarPage />} />
+          <Route path="/theme-calendar" element={<ThemeCalendarPage />} />
+          <Route path="/theme-detail/:code" element={<ThemeDetailPage />} />
+          <Route path="/theme-history/:date" element={<ThemeHistoryPage />} />
+          <Route path="/theme-admin" element={<ThemeAdminPage />} />
         </Routes>
       </main>
 
