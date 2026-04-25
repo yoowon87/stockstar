@@ -403,6 +403,52 @@ def daily_top_themes(date_iso: str, top_n: int = 10) -> list[dict[str, Any]]:
     } for r in rows]
 
 
+# ───── Calendar notes (per-day user comments) ─────
+
+def get_note(date_iso: str) -> dict[str, Any]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT date, note, updated_at FROM calendar_notes WHERE date = ?", (date_iso,)
+        ).fetchone()
+    if row is None:
+        return {"date": date_iso, "note": "", "updated_at": None}
+    return {
+        "date": row["date"].isoformat() if row["date"] else date_iso,
+        "note": row["note"] or "",
+        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+    }
+
+
+def upsert_note(date_iso: str, note: str) -> dict[str, Any]:
+    with get_connection() as conn:
+        conn.execute(
+            """INSERT INTO calendar_notes (date, note, updated_at)
+               VALUES (?, ?, now())
+               ON CONFLICT (date) DO UPDATE
+                 SET note = EXCLUDED.note,
+                     updated_at = now()""",
+            (date_iso, note),
+        )
+    return get_note(date_iso)
+
+
+def list_notes(start: str, end: str) -> list[dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """SELECT date, note, updated_at
+                 FROM calendar_notes
+                WHERE date BETWEEN ? AND ?
+                  AND note <> ''
+                ORDER BY date ASC""",
+            (start, end),
+        ).fetchall()
+    return [{
+        "date": r["date"].isoformat() if r["date"] else None,
+        "note": r["note"] or "",
+        "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
+    } for r in rows]
+
+
 # ───── Helpers ─────
 
 def _as_list(value: Any) -> list:

@@ -54,6 +54,27 @@ def get_stock_summary(stock_code: str) -> dict[str, Any]:
     return kis_client.fetch_stock_summary(stock_code)
 
 
+# ─── Calendar notes ───
+
+class CalendarNoteIn(BaseModel):
+    note: str = ""
+
+
+@router.get("/notes/{date_iso}")
+def get_note(date_iso: str) -> dict[str, Any]:
+    return theme_store.get_note(date_iso)
+
+
+@router.post("/notes/{date_iso}")
+def upsert_note(date_iso: str, payload: CalendarNoteIn) -> dict[str, Any]:
+    return theme_store.upsert_note(date_iso, payload.note)
+
+
+@router.get("/notes")
+def list_notes(start: str, end: str) -> dict[str, Any]:
+    return {"start": start, "end": end, "notes": theme_store.list_notes(start, end)}
+
+
 # ─── admin ───
 
 class ThemeUpsertIn(BaseModel):

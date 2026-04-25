@@ -24,7 +24,7 @@ export function ThemeRadarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [topN, setTopN] = useState<number>(10);
+  const [topN, setTopN] = useState<number>(100);
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<{ code: string; name: string } | null>(null);
@@ -78,11 +78,11 @@ export function ThemeRadarPage() {
               onChange={(e) => setTopN(Number(e.target.value))}
               style={selectStyle}
             >
-              <option value={3}>TOP 3</option>
-              <option value={5}>TOP 5</option>
-              <option value={10}>TOP 10</option>
-              <option value={20}>TOP 20</option>
               <option value={100}>전체 (37)</option>
+              <option value={20}>TOP 20</option>
+              <option value={10}>TOP 10</option>
+              <option value={5}>TOP 5</option>
+              <option value={3}>TOP 3</option>
             </select>
             <button onClick={() => navigate("/theme-calendar")} style={btnSecondaryStyle}>📅 캘린더</button>
             <button onClick={() => navigate("/theme-admin")} style={btnSecondaryStyle}>⚙️ 관리</button>

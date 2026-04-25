@@ -147,6 +147,34 @@ export async function getStockSummary(stockCode: string): Promise<StockSummary> 
   return res.json();
 }
 
+export interface CalendarNote {
+  date: string;
+  note: string;
+  updated_at: string | null;
+}
+
+export async function getCalendarNote(date: string): Promise<CalendarNote> {
+  const res = await fetch(`${API_BASE}/theme/notes/${date}`);
+  if (!res.ok) throw new Error("note fetch failed");
+  return res.json();
+}
+
+export async function saveCalendarNote(date: string, note: string): Promise<CalendarNote> {
+  const res = await fetch(`${API_BASE}/theme/notes/${date}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note }),
+  });
+  if (!res.ok) throw new Error("note save failed");
+  return res.json();
+}
+
+export async function listCalendarNotes(start: string, end: string): Promise<{ start: string; end: string; notes: CalendarNote[] }> {
+  const res = await fetch(`${API_BASE}/theme/notes?start=${start}&end=${end}`);
+  if (!res.ok) throw new Error("notes list failed");
+  return res.json();
+}
+
 export async function getRadar(top = 10): Promise<RadarResponse> {
   const res = await fetch(`${API_BASE}/theme/radar?top=${top}`);
   if (!res.ok) throw new Error("radar fetch failed");

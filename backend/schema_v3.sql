@@ -139,7 +139,16 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 );
 
 -- ========================================
--- 9. Admin change log
+-- 9. Calendar daily notes (user comments per day)
+-- ========================================
+CREATE TABLE IF NOT EXISTS calendar_notes (
+  date       date PRIMARY KEY,
+  note       text NOT NULL DEFAULT '',
+  updated_at timestamptz DEFAULT now()
+);
+
+-- ========================================
+-- 10. Admin change log
 -- ========================================
 CREATE TABLE IF NOT EXISTS theme_admin_logs (
   id         bigserial PRIMARY KEY,
