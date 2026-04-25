@@ -10,6 +10,13 @@ import {
 } from "../services/themeApi";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const CATEGORY_LABELS: Record<string, string> = {
+  A: "반도체/AI",
+  B: "AI/SW/로봇",
+  C: "에너지/방산",
+  D: "소재/조선",
+  E: "금융/바이오",
+};
 
 export function ThemeRadarPage() {
   const navigate = useNavigate();
@@ -17,7 +24,9 @@ export function ThemeRadarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [topN, setTopN] = useState(5);
+  const [topN, setTopN] = useState<number>(10);
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<{ code: string; name: string } | null>(null);
 
   function reload() {
@@ -37,30 +46,43 @@ export function ThemeRadarPage() {
     return () => window.clearInterval(id);
   }, [topN]);
 
+  const visible = useMemo(
+    () => (categoryFilter === "ALL" ? themes : themes.filter((t) => t.category === categoryFilter)),
+    [themes, categoryFilter],
+  );
+
+  function toggle(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function setAllExpanded(open: boolean) {
+    if (open) setExpandedIds(new Set(visible.map((t) => t.theme_id)));
+    else setExpandedIds(new Set());
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: "var(--bg-deep)" }}>
       <PageHeader
         eyebrow="🔥 THEME RADAR"
-        title="실시간 주도 테마 TOP"
+        title="실시간 주도 테마"
         subtitle="5분마다 자동 갱신 · 강세 컨펌 = 평균 +1.5%↑ · 동반상승 60%↑ · 거래대금 1천억↑"
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={topN}
               onChange={(e) => setTopN(Number(e.target.value))}
-              style={{
-                fontFamily: "Outfit",
-                fontSize: 11,
-                padding: "6px 10px",
-                borderRadius: 8,
-                background: "rgba(18, 20, 28, 0.6)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-primary)",
-              }}
+              style={selectStyle}
             >
               <option value={3}>TOP 3</option>
               <option value={5}>TOP 5</option>
               <option value={10}>TOP 10</option>
+              <option value={20}>TOP 20</option>
+              <option value={100}>전체 (37)</option>
             </select>
             <button onClick={() => navigate("/theme-calendar")} style={btnSecondaryStyle}>📅 캘린더</button>
             <button onClick={() => navigate("/theme-admin")} style={btnSecondaryStyle}>⚙️ 관리</button>
@@ -69,7 +91,26 @@ export function ThemeRadarPage() {
         }
       />
 
-      <div className="flex-1 min-h-0 overflow-auto p-6 max-w-6xl mx-auto w-full space-y-4">
+      <div className="flex-1 min-h-0 overflow-auto p-6 max-w-6xl mx-auto w-full space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CategoryChip code="ALL" label="전체" active={categoryFilter === "ALL"} onClick={() => setCategoryFilter("ALL")} />
+            {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
+              <CategoryChip
+                key={code}
+                code={code}
+                label={`${code}. ${label}`}
+                active={categoryFilter === code}
+                onClick={() => setCategoryFilter(code)}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setAllExpanded(true)} style={mutedBtn}>모두 펼침</button>
+            <button onClick={() => setAllExpanded(false)} style={mutedBtn}>모두 접기</button>
+          </div>
+        </div>
+
         {lastUpdate && (
           <div
             style={{
@@ -80,7 +121,8 @@ export function ThemeRadarPage() {
             }}
           >
             마지막 업데이트:{" "}
-            {lastUpdate.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            {lastUpdate.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} ·{" "}
+            {visible.length}개 표시
           </div>
         )}
 
@@ -94,13 +136,15 @@ export function ThemeRadarPage() {
           <div style={{ color: "var(--down)", fontFamily: "DM Sans", fontSize: 13 }}>{error}</div>
         )}
 
-        {themes.length === 0 && !loading && !error && <EmptyState />}
+        {visible.length === 0 && !loading && !error && <EmptyState />}
 
-        {themes.map((t, idx) => (
+        {visible.map((t, idx) => (
           <ThemeCard
             key={t.theme_id}
             theme={t}
-            rank={idx + 1}
+            rank={categoryFilter === "ALL" ? idx + 1 : t.rank ?? idx + 1}
+            expanded={expandedIds.has(t.theme_id)}
+            onToggle={() => toggle(t.theme_id)}
             onSelectStock={(code, name) => setSelectedStock({ code, name })}
           />
         ))}
@@ -120,10 +164,14 @@ export function ThemeRadarPage() {
 function ThemeCard({
   theme,
   rank,
+  expanded,
+  onToggle,
   onSelectStock,
 }: {
   theme: RadarTheme;
   rank: number;
+  expanded: boolean;
+  onToggle: () => void;
   onSelectStock: (code: string, name: string) => void;
 }) {
   const navigate = useNavigate();
@@ -133,101 +181,121 @@ function ThemeCard({
   return (
     <div
       style={{
-        padding: 18,
-        borderRadius: 14,
+        borderRadius: 12,
         background: theme.is_confirmed
           ? "linear-gradient(135deg, rgba(56, 217, 169, 0.06), rgba(18, 20, 28, 0.6))"
           : "rgba(18, 20, 28, 0.6)",
         border: theme.is_confirmed
           ? "1px solid rgba(56, 217, 169, 0.35)"
           : "1px solid var(--border-default)",
+        overflow: "hidden",
       }}
     >
-      <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
-        <div className="flex items-baseline gap-3">
-          <span style={{ fontSize: 22 }}>{medal}</span>
-          <button
-            onClick={() => navigate(`/theme-detail/${theme.code}`)}
-            style={{
-              fontFamily: "Outfit",
-              fontWeight: 700,
-              fontSize: 18,
-              color: "var(--text-primary)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            {theme.name}
-          </button>
-          <span
-            style={{
-              fontFamily: "Outfit",
-              fontSize: 10,
-              fontWeight: 600,
-              color: "var(--gold)",
-              background: "rgba(212, 165, 116, 0.08)",
-              padding: "2px 8px",
-              borderRadius: 6,
-              letterSpacing: "0.05em",
-            }}
-          >
-            {theme.code}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <ConfirmBadge confirmed={theme.is_confirmed} />
-          <div style={{ textAlign: "right" as const }}>
-            <div style={{ fontFamily: "Outfit", fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
-              점수
-            </div>
-            <div
+      <button
+        onClick={onToggle}
+        className="w-full"
+        style={{
+          padding: "12px 16px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left" as const,
+        }}
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span style={{ fontSize: 18, minWidth: 30 }}>{medal}</span>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/theme-detail/${theme.code}`);
+              }}
               style={{
                 fontFamily: "Outfit",
-                fontWeight: 800,
-                fontSize: 22,
-                color: scoreColor(theme.score),
+                fontWeight: 700,
+                fontSize: 15,
+                color: "var(--text-primary)",
+                cursor: "pointer",
               }}
             >
-              {theme.score.toFixed(2)}
+              {theme.name}
+            </span>
+            <span
+              style={{
+                fontFamily: "Outfit",
+                fontSize: 9,
+                fontWeight: 600,
+                color: "var(--gold)",
+                background: "rgba(212, 165, 116, 0.08)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                letterSpacing: "0.05em",
+              }}
+            >
+              {theme.code}
+            </span>
+            <ConfirmBadge confirmed={theme.is_confirmed} />
+          </div>
+          <div className="flex items-center gap-4">
+            <InlineMetric label="거래대금" value={formatKoreanAmount(theme.total_amount)} />
+            <InlineMetric
+              label="평균"
+              value={`${theme.avg_change >= 0 ? "+" : ""}${theme.avg_change.toFixed(2)}%`}
+              color={theme.avg_change >= 0 ? "var(--up)" : "var(--down)"}
+            />
+            <InlineMetric
+              label="동반상승"
+              value={`${(theme.rising_ratio * 100).toFixed(0)}%`}
+              color={theme.rising_ratio >= 0.6 ? "var(--up)" : "var(--text-secondary)"}
+            />
+            <div style={{ textAlign: "right" as const, minWidth: 50 }}>
+              <div style={{ fontFamily: "Outfit", fontSize: 8, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
+                점수
+              </div>
+              <div
+                style={{
+                  fontFamily: "Outfit",
+                  fontWeight: 800,
+                  fontSize: 18,
+                  color: scoreColor(theme.score),
+                  lineHeight: 1,
+                }}
+              >
+                {theme.score.toFixed(2)}
+              </div>
             </div>
+            <span style={{ fontFamily: "Outfit", fontSize: 12, color: "var(--text-muted)" }}>
+              {expanded ? "▲" : "▼"}
+            </span>
           </div>
         </div>
-      </div>
+        {!expanded && theme.leader_name && (
+          <div
+            style={{
+              marginTop: 6,
+              fontFamily: "DM Sans",
+              fontSize: 11,
+              color: "var(--text-muted)",
+              paddingLeft: 38,
+            }}
+          >
+            대장주 <b style={{ color: "var(--gold-bright)" }}>{theme.leader_name}</b>{" "}
+            <span style={{ color: theme.leader_change >= 0 ? "var(--up)" : "var(--down)" }}>
+              {theme.leader_change >= 0 ? "+" : ""}
+              {theme.leader_change.toFixed(2)}%
+            </span>
+          </div>
+        )}
+      </button>
 
-      <div
-        className="grid gap-3 mb-3"
-        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}
-      >
-        <Metric
-          label="거래대금"
-          value={formatKoreanAmount(theme.total_amount)}
-          color="var(--text-primary)"
-        />
-        <Metric
-          label="평균 등락"
-          value={`${theme.avg_change >= 0 ? "+" : ""}${theme.avg_change.toFixed(2)}%`}
-          color={theme.avg_change >= 0 ? "var(--up)" : "var(--down)"}
-        />
-        <Metric
-          label="동반 상승"
-          value={`${(theme.rising_ratio * 100).toFixed(0)}%`}
-          color={theme.rising_ratio >= 0.6 ? "var(--up)" : "var(--text-secondary)"}
-        />
-        <Metric
-          label="대장주"
-          value={theme.leader_name || "—"}
-          color="var(--gold-bright)"
-        />
-      </div>
-
-      {sortedStocks.length > 0 && (
-        <StockTable
-          stocks={sortedStocks}
-          leaderCode={theme.leader_code}
-          onSelectStock={onSelectStock}
-        />
+      {expanded && sortedStocks.length > 0 && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <StockTable
+            stocks={sortedStocks}
+            leaderCode={theme.leader_code}
+            onSelectStock={onSelectStock}
+          />
+        </div>
       )}
     </div>
   );
@@ -289,15 +357,46 @@ function StockTable({
   );
 }
 
+function CategoryChip({
+  code,
+  label,
+  active,
+  onClick,
+}: {
+  code: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        fontFamily: "Outfit",
+        fontSize: 11,
+        fontWeight: 700,
+        padding: "5px 12px",
+        borderRadius: 999,
+        background: active ? "rgba(212, 165, 116, 0.15)" : "rgba(255,255,255,0.02)",
+        border: active ? "1px solid rgba(212, 165, 116, 0.5)" : "1px solid var(--border-subtle)",
+        color: active ? "var(--gold-bright)" : "var(--text-secondary)",
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function ConfirmBadge({ confirmed }: { confirmed: boolean }) {
   if (confirmed) {
     return (
       <span
         style={{
           fontFamily: "Outfit",
-          fontSize: 11,
+          fontSize: 9,
           fontWeight: 700,
-          padding: "4px 12px",
+          padding: "2px 8px",
           borderRadius: 999,
           background: "rgba(56, 217, 169, 0.15)",
           border: "1px solid rgba(56, 217, 169, 0.5)",
@@ -305,52 +404,34 @@ function ConfirmBadge({ confirmed }: { confirmed: boolean }) {
           letterSpacing: "0.05em",
         }}
       >
-        ✅ 강세 컨펌
+        ✅ 강세
       </span>
     );
   }
-  return (
-    <span
-      style={{
-        fontFamily: "Outfit",
-        fontSize: 10,
-        fontWeight: 600,
-        padding: "3px 10px",
-        borderRadius: 999,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid var(--border-subtle)",
-        color: "var(--text-muted)",
-        letterSpacing: "0.05em",
-      }}
-    >
-      대기
-    </span>
-  );
+  return null;
 }
 
-function Metric({ label, value, color }: { label: string; value: string; color: string }) {
+function InlineMetric({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
   return (
-    <div
-      style={{
-        padding: 10,
-        borderRadius: 8,
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid var(--border-subtle)",
-      }}
-    >
-      <div style={{ fontFamily: "Outfit", fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
+    <div style={{ textAlign: "right" as const, minWidth: 70 }}>
+      <div style={{ fontFamily: "Outfit", fontSize: 8, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
         {label}
       </div>
       <div
         style={{
           fontFamily: "Outfit",
           fontWeight: 700,
-          fontSize: 16,
-          color,
-          marginTop: 2,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          fontSize: 12,
+          color: color ?? "var(--text-primary)",
+          lineHeight: 1.2,
         }}
       >
         {value}
@@ -404,15 +485,20 @@ function EmptyState() {
         lineHeight: 1.7,
       }}
     >
-      아직 실시간 점수 데이터가 없습니다.
-      <br />
-      <span style={{ fontSize: 11 }}>
-        cron이 처음 실행될 때까지 기다리거나, <code>/api/cron/poll-stocks</code> 와{" "}
-        <code>/api/cron/score-themes</code>를 수동으로 호출하세요.
-      </span>
+      해당 카테고리에 표시할 테마가 없습니다.
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  fontFamily: "Outfit",
+  fontSize: 11,
+  padding: "6px 10px",
+  borderRadius: 8,
+  background: "rgba(18, 20, 28, 0.6)",
+  border: "1px solid var(--border-default)",
+  color: "var(--text-primary)",
+};
 
 const btnSecondaryStyle: React.CSSProperties = {
   fontFamily: "Outfit",
@@ -435,5 +521,17 @@ const btnPrimaryStyle: React.CSSProperties = {
   background: "linear-gradient(135deg, var(--gold), var(--gold-bright))",
   color: "var(--bg-deep)",
   border: "none",
+  cursor: "pointer",
+};
+
+const mutedBtn: React.CSSProperties = {
+  fontFamily: "Outfit",
+  fontSize: 10,
+  fontWeight: 600,
+  padding: "4px 10px",
+  borderRadius: 6,
+  background: "transparent",
+  border: "1px solid var(--border-subtle)",
+  color: "var(--text-muted)",
   cursor: "pointer",
 };
