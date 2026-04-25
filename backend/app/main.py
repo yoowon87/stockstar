@@ -5,8 +5,10 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from app.api.cron import router as cron_router
 from app.api.dashboard import router as dashboard_router
@@ -42,6 +44,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ─── App-level password gate ────────────────────────────────────────────────
+# All /api/* requests require X-App-Token == APP_PASSWORD env, except:
+#   - /api/cron/*  (uses CRON_SECRET via Authorization header instead)
+#   - /api/auth/verify (uses the same X-App-Token; let middleware check it)
+# If APP_PASSWORD env is unset, the gate is disabled (dev fallback).
+
+_AUTH_EXEMPT_PREFIXES = ("/api/cron/",)
+
+
+class AppPasswordMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        if not path.startswith("/api/"):
+            return await call_next(request)
+        if any(path.startswith(p) for p in _AUTH_EXEMPT_PREFIXES):
+            return await call_next(request)
+
+        expected = os.getenv("APP_PASSWORD", "")
+        if not expected:
+            # No password configured -> open access (local dev convenience).
+            return await call_next(request)
+
+        token = request.headers.get("x-app-token", "")
+        if token != expected:
+            return JSONResponse({"detail": "unauthorized"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(AppPasswordMiddleware)
+
+
+@app.get("/api/auth/verify")
+def auth_verify() -> dict[str, bool]:
+    """Reachable only when X-App-Token is valid (middleware enforces)."""
+    return {"ok": True}
 
 app.include_router(cron_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
