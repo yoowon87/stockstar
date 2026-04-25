@@ -6,7 +6,13 @@ import {
   type IChartApi,
   type ISeriesApi,
 } from "lightweight-charts";
-import { getStockChart, type ChartCandle } from "../services/themeApi";
+import {
+  formatKoreanAmount,
+  getStockChart,
+  getStockSummary,
+  type ChartCandle,
+  type StockSummary,
+} from "../services/themeApi";
 
 interface Props {
   stockCode: string;
@@ -24,6 +30,7 @@ const PRESETS: Array<{ days: number; label: string }> = [
 export function StockChartModal({ stockCode, stockName, onClose }: Props) {
   const [days, setDays] = useState(60);
   const [candles, setCandles] = useState<ChartCandle[]>([]);
+  const [summary, setSummary] = useState<StockSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -41,7 +48,7 @@ export function StockChartModal({ stockCode, stockName, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Fetch on days change
+  // Fetch chart on days change
   useEffect(() => {
     setLoading(true);
     setError("");
@@ -53,6 +60,14 @@ export function StockChartModal({ stockCode, stockName, onClose }: Props) {
       .catch((e) => setError(e instanceof Error ? e.message : "차트 로드 실패"))
       .finally(() => setLoading(false));
   }, [stockCode, days]);
+
+  // Fetch summary once per stock
+  useEffect(() => {
+    setSummary(null);
+    getStockSummary(stockCode)
+      .then(setSummary)
+      .catch(() => setSummary(null));
+  }, [stockCode]);
 
   // Create chart once
   useEffect(() => {
@@ -237,11 +252,13 @@ export function StockChartModal({ stockCode, stockName, onClose }: Props) {
           </div>
         )}
 
+        <SummaryRow summary={summary} />
+
         <div
           ref={containerRef}
           style={{
             width: "100%",
-            height: 420,
+            height: 380,
             position: "relative",
           }}
         >
@@ -281,4 +298,113 @@ export function StockChartModal({ stockCode, stockName, onClose }: Props) {
       </div>
     </div>
   );
+}
+
+function SummaryRow({ summary }: { summary: StockSummary | null }) {
+  if (!summary) {
+    return (
+      <div
+        style={{
+          padding: "8px 12px",
+          borderRadius: 8,
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid var(--border-subtle)",
+          fontFamily: "Outfit",
+          fontSize: 11,
+          color: "var(--text-muted)",
+        }}
+      >
+        재무 지표 불러오는 중…
+      </div>
+    );
+  }
+  const roeBand = roeMeaning(summary.roe);
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 8,
+        padding: 10,
+        borderRadius: 8,
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid var(--border-subtle)",
+      }}
+    >
+      <SummaryCell label="거래대금" value={summary.trade_amount != null ? `${formatKoreanAmount(summary.trade_amount)}원` : "—"} />
+      <SummaryCell label="시가총액" value={summary.market_cap != null ? `${formatKoreanAmount(summary.market_cap)}원` : "—"} />
+      <SummaryCell label="PER" value={summary.per != null ? summary.per.toFixed(2) : "—"} />
+      <SummaryCell label="PBR" value={summary.pbr != null ? summary.pbr.toFixed(2) : "—"} />
+      <SummaryCell
+        label={`ROE ${summary.ratio_period ? `(${summary.ratio_period.slice(0, 4)}.${summary.ratio_period.slice(4, 6)})` : ""}`}
+        value={summary.roe != null ? `${summary.roe.toFixed(2)}%` : "—"}
+        valueColor={roeBand.color}
+        suffix={summary.roe != null ? roeBand.label : null}
+        suffixColor={roeBand.color}
+      />
+    </div>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+  valueColor,
+  suffix,
+  suffixColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+  suffix?: string | null;
+  suffixColor?: string;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontFamily: "Outfit",
+          fontSize: 9,
+          color: "var(--text-muted)",
+          letterSpacing: "0.1em",
+        }}
+      >
+        {label}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span
+          style={{
+            fontFamily: "Outfit",
+            fontWeight: 700,
+            fontSize: 14,
+            color: valueColor ?? "var(--text-primary)",
+          }}
+        >
+          {value}
+        </span>
+        {suffix && (
+          <span
+            style={{
+              fontFamily: "Outfit",
+              fontWeight: 600,
+              fontSize: 10,
+              color: suffixColor ?? "var(--text-muted)",
+            }}
+          >
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function roeMeaning(roe: number | null): { label: string; color: string } {
+  if (roe == null) return { label: "—", color: "var(--text-muted)" };
+  if (roe >= 20) return { label: "매우 우수", color: "var(--up)" };
+  if (roe >= 15) return { label: "우수", color: "var(--up)" };
+  if (roe >= 10) return { label: "양호", color: "var(--gold-bright)" };
+  if (roe >= 5) return { label: "평균", color: "var(--text-secondary)" };
+  if (roe >= 0) return { label: "낮음", color: "var(--down)" };
+  return { label: "적자", color: "var(--down)" };
 }

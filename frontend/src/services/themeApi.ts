@@ -125,6 +125,28 @@ export async function getStockChart(stockCode: string, days = 60): Promise<Chart
   return res.json();
 }
 
+export interface StockSummary {
+  code: string;
+  price: number | null;
+  change_pct: number | null;
+  volume: number | null;
+  trade_amount: number | null;
+  market_cap: number | null;
+  per: number | null;
+  pbr: number | null;
+  eps: number | null;
+  bps: number | null;
+  roe: number | null;
+  debt_ratio: number | null;
+  ratio_period: string | null;
+}
+
+export async function getStockSummary(stockCode: string): Promise<StockSummary> {
+  const res = await fetch(`${API_BASE}/theme/stock/${stockCode}/summary`);
+  if (!res.ok) throw new Error("summary fetch failed");
+  return res.json();
+}
+
 export async function getRadar(top = 10): Promise<RadarResponse> {
   const res = await fetch(`${API_BASE}/theme/radar?top=${top}`);
   if (!res.ok) throw new Error("radar fetch failed");

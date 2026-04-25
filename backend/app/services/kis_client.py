@@ -25,6 +25,7 @@ KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 KIS_PROVIDER_KEY = "kis"
 QUOTE_TR_ID = "FHKST01010100"
 DAILY_CHART_TR_ID = "FHKST03010100"
+FINANCIAL_RATIO_TR_ID = "FHKST66430300"
 THROTTLE_SECONDS = 0.07  # ~14 calls/sec, conservative under 20/sec limit
 
 
@@ -129,6 +130,12 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
         if data.get("rt_cd") != "0":
             return None
         out = data.get("output", {})
+        def _to_float(v):
+            try:
+                return float(v) if v not in (None, "", "0") else None
+            except (TypeError, ValueError):
+                return None
+
         return {
             "code": stock_code,
             "price": float(out.get("stck_prpr") or 0),
@@ -136,9 +143,77 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
             "volume": int(out.get("acml_vol") or 0),
             "trade_amount": int(out.get("acml_tr_pbmn") or 0),
             "market_cap": int(out.get("hts_avls") or 0) * 100_000_000,
+            "per": _to_float(out.get("per")),
+            "pbr": _to_float(out.get("pbr")),
+            "eps": _to_float(out.get("eps")),
+            "bps": _to_float(out.get("bps")),
         }
     except Exception:
         return None
+
+
+def fetch_financial_ratio(stock_code: str, token: str | None = None) -> dict[str, Any] | None:
+    """Fetch the most recent quarterly financial ratios (incl. ROE)."""
+    tok = token or get_access_token()
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/finance/financial-ratio"
+    headers = {**_quote_headers(tok), "tr_id": FINANCIAL_RATIO_TR_ID}
+    params = {
+        "FID_DIV_CLS_CODE": "0",  # consolidated
+        "fid_cond_mrkt_div_code": "J",
+        "fid_input_iscd": stock_code,
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params, timeout=8)
+        if res.status_code == 401:
+            tok = get_access_token(force_refresh=True)
+            headers = {**_quote_headers(tok), "tr_id": FINANCIAL_RATIO_TR_ID}
+            res = requests.get(url, headers=headers, params=params, timeout=8)
+        res.raise_for_status()
+        data = res.json()
+        if data.get("rt_cd") != "0":
+            return None
+        output = data.get("output") or []
+        if not output:
+            return None
+        latest = output[0]
+        def _to_float(v):
+            try:
+                return float(v) if v not in (None, "", "0") else None
+            except (TypeError, ValueError):
+                return None
+        return {
+            "period": latest.get("stac_yymm"),
+            "roe": _to_float(latest.get("roe_val")),
+            "debt_ratio": _to_float(latest.get("lblt_rate")),
+            "reserve_ratio": _to_float(latest.get("rsrv_rate")),
+            "revenue_growth": _to_float(latest.get("grs")),
+            "operating_income_growth": _to_float(latest.get("bsop_prfi_inrt")),
+            "net_income_growth": _to_float(latest.get("ntin_inrt")),
+        }
+    except Exception:
+        return None
+
+
+def fetch_stock_summary(stock_code: str) -> dict[str, Any]:
+    """Quote + financial ratio combined."""
+    token = get_access_token()
+    quote = fetch_quote(stock_code, token=token) or {}
+    ratio = fetch_financial_ratio(stock_code, token=token) or {}
+    return {
+        "code": stock_code,
+        "price": quote.get("price"),
+        "change_pct": quote.get("change_pct"),
+        "volume": quote.get("volume"),
+        "trade_amount": quote.get("trade_amount"),
+        "market_cap": quote.get("market_cap"),
+        "per": quote.get("per"),
+        "pbr": quote.get("pbr"),
+        "eps": quote.get("eps"),
+        "bps": quote.get("bps"),
+        "roe": ratio.get("roe"),
+        "debt_ratio": ratio.get("debt_ratio"),
+        "ratio_period": ratio.get("period"),
+    }
 
 
 def fetch_daily_chart(

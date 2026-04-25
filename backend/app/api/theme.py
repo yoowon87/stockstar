@@ -49,6 +49,11 @@ def get_stock_chart(stock_code: str, days: int = 60) -> dict[str, Any]:
     return kis_client.fetch_daily_chart(stock_code, days=days)
 
 
+@router.get("/stock/{stock_code}/summary")
+def get_stock_summary(stock_code: str) -> dict[str, Any]:
+    return kis_client.fetch_stock_summary(stock_code)
+
+
 # ─── admin ───
 
 class ThemeUpsertIn(BaseModel):
