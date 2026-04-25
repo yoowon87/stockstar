@@ -1,13 +1,19 @@
-name: Theme Radar — 5min poll (stocks + score)
+name: Theme Radar — poll & score (market-aware schedule)
 
-# Korean trading window incl. pre/post market: KST 07:00–20:00 weekdays
-# In UTC that splits into two slots:
-#   * 22:00–23:55 UTC of Sun–Thu  ==  KST 07:00–08:55 of Mon–Fri
-#   * 00:00–11:55 UTC of Mon–Fri  ==  KST 09:00–20:55 of Mon–Fri
+# Schedule shaped to KST market activity:
+#   * Pre-open + 정규장 (KST 07:00–15:55, weekdays) — every 5 min
+#   * Post-market (KST 16:00–20:00, weekdays) — hourly on the hour
+#     (16, 17, 18, 19, 20 — last one = final 마감 snapshot)
+#
+# UTC ⇄ KST: KST = UTC + 9
 on:
   schedule:
+    # KST Mon-Fri 07:00–08:55  ==  UTC Sun-Thu 22:00–23:55, every 5 min
     - cron: '*/5 22-23 * * 0-4'
-    - cron: '*/5 0-11 * * 1-5'
+    # KST Mon-Fri 09:00–15:55  ==  UTC Mon-Fri 00:00–06:55, every 5 min
+    - cron: '*/5 0-6 * * 1-5'
+    # KST Mon-Fri 16:00, 17:00, 18:00, 19:00, 20:00  ==  UTC Mon-Fri 07:00–11:00 hourly
+    - cron: '0 7-11 * * 1-5'
   workflow_dispatch:
 
 jobs:
