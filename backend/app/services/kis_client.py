@@ -115,20 +115,34 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
     """Fetch a single domestic stock quote.
 
     Returns dict with keys: code, price, change_pct, volume, trade_amount, market_cap.
-    None on failure.
+    None on failure. Auto-retries once on KIS rate-limit (msg contains '초과').
     """
     tok = token or get_access_token()
     url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price"
     params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": stock_code}
+
+    def _call(token_to_use: str):
+        return requests.get(url, headers=_quote_headers(token_to_use), params=params, timeout=8)
+
     try:
-        res = requests.get(url, headers=_quote_headers(tok), params=params, timeout=8)
+        res = _call(tok)
         if res.status_code == 401:
             tok = get_access_token(force_refresh=True)
-            res = requests.get(url, headers=_quote_headers(tok), params=params, timeout=8)
+            res = _call(tok)
         res.raise_for_status()
         data = res.json()
         if data.get("rt_cd") != "0":
-            return None
+            msg = data.get("msg1", "")
+            if "초과" in msg or "한도" in msg:
+                # KIS rate limit — back off and retry once
+                time.sleep(0.4)
+                res = _call(tok)
+                res.raise_for_status()
+                data = res.json()
+                if data.get("rt_cd") != "0":
+                    return None
+            else:
+                return None
         out = data.get("output", {})
         def _to_float(v):
             try:
@@ -277,12 +291,14 @@ def fetch_daily_chart(
 
 def fetch_quotes(
     stock_codes: list[str],
-    max_workers: int = 10,
+    max_workers: int = 5,
 ) -> dict[str, dict[str, Any]]:
     """Fetch quotes for many stocks in parallel.
 
-    KIS personal API limit is ~20 req/sec; with `max_workers=10` and ~150ms per
-    KIS call we stay safely under that. Returns {code: quote_dict}.
+    KIS personal API limit is ~20 req/sec, but in practice 10 concurrent
+    workers triggers '초당 거래건수 초과'. 5 workers + per-call retry on
+    rate-limit keeps the failure rate near zero while staying within the
+    Vercel 60s budget for 150+ codes. Returns {code: quote_dict}.
     """
     if not stock_codes:
         return {}

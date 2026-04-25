@@ -200,9 +200,25 @@ export async function getThemeByCode(code: string): Promise<ThemeDetail> {
 }
 
 export async function listAdminThemes(): Promise<{ themes: AdminTheme[] }> {
-  const res = await fetch(`${API_BASE}/theme/admin/themes`);
-  if (!res.ok) throw new Error("admin list failed");
-  return res.json();
+  // Cold start can briefly 5xx; retry once before surfacing.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/theme/admin/themes`);
+      if (res.ok) return res.json();
+      if (attempt === 0 && (res.status === 504 || res.status >= 500)) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error("admin list failed");
 }
 
 export async function upsertTheme(payload: Partial<AdminTheme> & { code: string; name: string; category: string; category_name: string }): Promise<AdminTheme> {
