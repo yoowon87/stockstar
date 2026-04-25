@@ -81,11 +81,6 @@ def calculate_theme_score(stock_data: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def is_triple_confirmed(score_result: dict[str, Any], news_count_24h: int) -> bool:
-    """Triple confirm = score-confirmed AND at least one matching news in 24h."""
-    return bool(score_result.get("is_score_confirmed")) and news_count_24h >= 1
-
-
 def _empty_score() -> dict[str, Any]:
     return {
         "total_amount": 0,

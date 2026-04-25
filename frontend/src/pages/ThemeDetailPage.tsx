@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "./_shared";
+import { StockChartModal } from "../components/StockChartModal";
 import { getThemeByCode, type ThemeDetail } from "../services/themeApi";
 
 export function ThemeDetailPage() {
@@ -9,6 +10,7 @@ export function ThemeDetailPage() {
   const [data, setData] = useState<ThemeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedStock, setSelectedStock] = useState<{ code: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!code) return;
@@ -40,7 +42,7 @@ export function ThemeDetailPage() {
       <PageHeader
         eyebrow={`🎯 ${t.code} · ${t.category_name}`}
         title={t.name}
-        subtitle={t.description ?? `${t.stock_count}종목 매핑됨`}
+        subtitle={t.description ?? `${t.stock_count}종목 매핑됨 · 종목 클릭 시 일봉 차트`}
         right={
           <button onClick={() => navigate(-1)} style={backBtn}>
             ← 뒤로
@@ -61,10 +63,23 @@ export function ThemeDetailPage() {
           </div>
           <div className="space-y-1">
             {data.stocks.map((s) => (
-              <div
+              <button
                 key={s.stock_code}
-                className="flex items-center gap-3 flex-wrap"
-                style={{ padding: "6px 0", borderBottom: "1px solid var(--border-subtle)" }}
+                onClick={() => setSelectedStock({ code: s.stock_code, name: s.stock_name })}
+                className="w-full flex items-center gap-3 flex-wrap"
+                style={{
+                  padding: "8px 6px",
+                  borderBottom: "1px solid var(--border-subtle)",
+                  background: "transparent",
+                  border: "none",
+                  borderBottomStyle: "solid",
+                  borderBottomColor: "var(--border-subtle)",
+                  borderBottomWidth: 1,
+                  cursor: "pointer",
+                  textAlign: "left" as const,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212, 165, 116, 0.04)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 {s.is_leader && <span style={{ color: "var(--gold-bright)" }}>★</span>}
                 <span style={{ fontFamily: "DM Sans", fontWeight: s.is_leader ? 700 : 500, color: "var(--text-primary)" }}>
@@ -86,48 +101,19 @@ export function ThemeDetailPage() {
                 {s.note && (
                   <span style={{ fontFamily: "DM Sans", fontSize: 11, color: "var(--down)" }}>⚠️ {s.note}</span>
                 )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            background: "rgba(18, 20, 28, 0.6)",
-            border: "1px solid var(--border-default)",
-          }}
-        >
-          <div style={{ fontFamily: "Outfit", fontWeight: 700, fontSize: 13, color: "var(--text-primary)", marginBottom: 8 }}>
-            최근 뉴스 ({data.news.length})
-          </div>
-          {data.news.length === 0 ? (
-            <div style={{ fontFamily: "DM Sans", fontSize: 12, color: "var(--text-muted)" }}>매칭된 뉴스가 없습니다.</div>
-          ) : (
-            <div className="space-y-1">
-              {data.news.map((n, i) => (
-                <a
-                  key={i}
-                  href={n.url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
+                <span
                   style={{
-                    display: "block",
-                    fontFamily: "DM Sans",
-                    fontSize: 12,
-                    color: "var(--text-secondary)",
-                    lineHeight: 1.5,
-                    textDecoration: "none",
-                    padding: "4px 0",
+                    marginLeft: "auto",
+                    fontFamily: "Outfit",
+                    fontSize: 10,
+                    color: "var(--blue)",
                   }}
                 >
-                  • {n.title}{" "}
-                  {n.source && <span style={{ color: "var(--text-muted)" }}>({n.source})</span>}
-                </a>
-              ))}
-            </div>
-          )}
+                  📈 차트
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {t.keywords.length > 0 && (
@@ -140,7 +126,7 @@ export function ThemeDetailPage() {
             }}
           >
             <div style={{ fontFamily: "Outfit", fontSize: 10, color: "var(--gold)", letterSpacing: "0.15em", marginBottom: 6 }}>
-              뉴스 매칭 키워드
+              테마 키워드
             </div>
             <div className="flex flex-wrap gap-2">
               {t.keywords.map((kw) => (
@@ -163,6 +149,14 @@ export function ThemeDetailPage() {
           </div>
         )}
       </div>
+
+      {selectedStock && (
+        <StockChartModal
+          stockCode={selectedStock.code}
+          stockName={selectedStock.name}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </div>
   );
 }

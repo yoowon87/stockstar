@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "./_shared";
+import { StockChartModal } from "../components/StockChartModal";
 import {
   formatKoreanAmount,
   getRadar,
   type RadarTheme,
   type ThemeStock,
-  type ThemeNewsItem,
 } from "../services/themeApi";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -18,6 +18,7 @@ export function ThemeRadarPage() {
   const [error, setError] = useState("");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [topN, setTopN] = useState(5);
+  const [selectedStock, setSelectedStock] = useState<{ code: string; name: string } | null>(null);
 
   function reload() {
     setError("");
@@ -41,7 +42,7 @@ export function ThemeRadarPage() {
       <PageHeader
         eyebrow="🔥 THEME RADAR"
         title="실시간 주도 테마 TOP"
-        subtitle="5분마다 자동 갱신 · 트리플 컨펌 = 점수 + 대장주 + 뉴스"
+        subtitle="5분마다 자동 갱신 · 강세 컨펌 = 평균 +1.5%↑ · 동반상승 60%↑ · 거래대금 1천억↑"
         right={
           <div className="flex items-center gap-2">
             <select
@@ -61,21 +62,9 @@ export function ThemeRadarPage() {
               <option value={5}>TOP 5</option>
               <option value={10}>TOP 10</option>
             </select>
-            <button
-              onClick={() => navigate("/theme-calendar")}
-              style={btnSecondaryStyle}
-            >
-              📅 캘린더
-            </button>
-            <button
-              onClick={() => navigate("/theme-admin")}
-              style={btnSecondaryStyle}
-            >
-              ⚙️ 관리
-            </button>
-            <button onClick={reload} style={btnPrimaryStyle}>
-              새로고침
-            </button>
+            <button onClick={() => navigate("/theme-calendar")} style={btnSecondaryStyle}>📅 캘린더</button>
+            <button onClick={() => navigate("/theme-admin")} style={btnSecondaryStyle}>⚙️ 관리</button>
+            <button onClick={reload} style={btnPrimaryStyle}>새로고침</button>
           </div>
         }
       />
@@ -105,19 +94,38 @@ export function ThemeRadarPage() {
           <div style={{ color: "var(--down)", fontFamily: "DM Sans", fontSize: 13 }}>{error}</div>
         )}
 
-        {themes.length === 0 && !loading && !error && (
-          <EmptyState />
-        )}
+        {themes.length === 0 && !loading && !error && <EmptyState />}
 
         {themes.map((t, idx) => (
-          <ThemeCard key={t.theme_id} theme={t} rank={idx + 1} />
+          <ThemeCard
+            key={t.theme_id}
+            theme={t}
+            rank={idx + 1}
+            onSelectStock={(code, name) => setSelectedStock({ code, name })}
+          />
         ))}
       </div>
+
+      {selectedStock && (
+        <StockChartModal
+          stockCode={selectedStock.code}
+          stockName={selectedStock.name}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ThemeCard({ theme, rank }: { theme: RadarTheme; rank: number }) {
+function ThemeCard({
+  theme,
+  rank,
+  onSelectStock,
+}: {
+  theme: RadarTheme;
+  rank: number;
+  onSelectStock: (code: string, name: string) => void;
+}) {
   const navigate = useNavigate();
   const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
   const sortedStocks = [...theme.stocks].sort((a, b) => b.trade_amount - a.trade_amount);
@@ -169,7 +177,7 @@ function ThemeCard({ theme, rank }: { theme: RadarTheme; rank: number }) {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <TripleConfirmBadge confirmed={theme.is_confirmed} />
+          <ConfirmBadge confirmed={theme.is_confirmed} />
           <div style={{ textAlign: "right" as const }}>
             <div style={{ fontFamily: "Outfit", fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
               점수
@@ -208,42 +216,38 @@ function ThemeCard({ theme, rank }: { theme: RadarTheme; rank: number }) {
           color={theme.rising_ratio >= 0.6 ? "var(--up)" : "var(--text-secondary)"}
         />
         <Metric
-          label="뉴스 24h"
-          value={`${theme.news_count_24h}건`}
-          color={theme.news_count_24h > 0 ? "var(--gold-bright)" : "var(--text-muted)"}
+          label="대장주"
+          value={theme.leader_name || "—"}
+          color="var(--gold-bright)"
         />
       </div>
 
-      {sortedStocks.length > 0 && <StockTable stocks={sortedStocks} leaderCode={theme.leader_code} />}
-
-      {theme.news.length > 0 && (
-        <div className="mt-3">
-          <div
-            style={{
-              fontFamily: "Outfit",
-              fontSize: 10,
-              fontWeight: 700,
-              color: "var(--gold)",
-              letterSpacing: "0.15em",
-              marginBottom: 6,
-            }}
-          >
-            📰 뉴스 {theme.news.length}건
-          </div>
-          <NewsList news={theme.news} />
-        </div>
+      {sortedStocks.length > 0 && (
+        <StockTable
+          stocks={sortedStocks}
+          leaderCode={theme.leader_code}
+          onSelectStock={onSelectStock}
+        />
       )}
     </div>
   );
 }
 
-function StockTable({ stocks, leaderCode }: { stocks: ThemeStock[]; leaderCode: string | null }) {
+function StockTable({
+  stocks,
+  leaderCode,
+  onSelectStock,
+}: {
+  stocks: ThemeStock[];
+  leaderCode: string | null;
+  onSelectStock: (code: string, name: string) => void;
+}) {
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "DM Sans", fontSize: 12 }}>
         <thead>
           <tr style={{ color: "var(--text-muted)", fontFamily: "Outfit", fontSize: 10, letterSpacing: "0.08em" }}>
-            <Th align="left">종목</Th>
+            <Th align="left">종목 (클릭 → 일봉 차트)</Th>
             <Th align="right">현재가</Th>
             <Th align="right">등락</Th>
             <Th align="right">거래대금</Th>
@@ -254,7 +258,13 @@ function StockTable({ stocks, leaderCode }: { stocks: ThemeStock[]; leaderCode: 
             const isLeader = s.code === leaderCode;
             const changeColor = s.change_pct >= 0 ? "var(--up)" : "var(--down)";
             return (
-              <tr key={s.code}>
+              <tr
+                key={s.code}
+                onClick={() => onSelectStock(s.code, s.name)}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212, 165, 116, 0.04)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
                 <td style={cellStyle(isLeader)}>
                   {isLeader && <span style={{ marginRight: 6, color: "var(--gold-bright)" }}>★</span>}
                   <span style={{ fontWeight: isLeader ? 700 : 500 }}>{s.name}</span>
@@ -279,34 +289,7 @@ function StockTable({ stocks, leaderCode }: { stocks: ThemeStock[]; leaderCode: 
   );
 }
 
-function NewsList({ news }: { news: ThemeNewsItem[] }) {
-  return (
-    <div className="space-y-1">
-      {news.map((n, i) => (
-        <a
-          key={i}
-          href={n.url ?? "#"}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: "block",
-            fontFamily: "DM Sans",
-            fontSize: 12,
-            color: "var(--text-secondary)",
-            lineHeight: 1.5,
-            textDecoration: "none",
-            padding: "4px 0",
-          }}
-        >
-          • {n.title}
-          {n.source && <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>({n.source})</span>}
-        </a>
-      ))}
-    </div>
-  );
-}
-
-function TripleConfirmBadge({ confirmed }: { confirmed: boolean }) {
+function ConfirmBadge({ confirmed }: { confirmed: boolean }) {
   if (confirmed) {
     return (
       <span
@@ -322,7 +305,7 @@ function TripleConfirmBadge({ confirmed }: { confirmed: boolean }) {
           letterSpacing: "0.05em",
         }}
       >
-        ✅ 트리플 컨펌
+        ✅ 강세 컨펌
       </span>
     );
   }
@@ -340,7 +323,7 @@ function TripleConfirmBadge({ confirmed }: { confirmed: boolean }) {
         letterSpacing: "0.05em",
       }}
     >
-      ⏳ 미컨펌
+      대기
     </span>
   );
 }
@@ -358,7 +341,20 @@ function Metric({ label, value, color }: { label: string; value: string; color: 
       <div style={{ fontFamily: "Outfit", fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.1em" }}>
         {label}
       </div>
-      <div style={{ fontFamily: "Outfit", fontWeight: 700, fontSize: 16, color, marginTop: 2 }}>{value}</div>
+      <div
+        style={{
+          fontFamily: "Outfit",
+          fontWeight: 700,
+          fontSize: 16,
+          color,
+          marginTop: 2,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }

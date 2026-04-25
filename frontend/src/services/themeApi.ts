@@ -1,12 +1,5 @@
 const API_BASE = "/api";
 
-export interface ThemeNewsItem {
-  title: string;
-  url: string | null;
-  source: string | null;
-  published_at: string | null;
-}
-
 export interface ThemeStock {
   code: string;
   name: string;
@@ -33,9 +26,7 @@ export interface RadarTheme {
   leader_code: string | null;
   leader_name: string;
   leader_change: number;
-  news_count_24h: number;
   stocks: ThemeStock[];
-  news: ThemeNewsItem[];
 }
 
 export interface RadarResponse {
@@ -110,7 +101,28 @@ export interface ThemeDetail {
     weight: number;
     note: string | null;
   }>;
-  news: ThemeNewsItem[];
+}
+
+export interface ChartCandle {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface ChartResponse {
+  code: string;
+  count: number;
+  candles: ChartCandle[];
+  error?: string;
+}
+
+export async function getStockChart(stockCode: string, days = 60): Promise<ChartResponse> {
+  const res = await fetch(`${API_BASE}/theme/stock/${stockCode}/chart?days=${days}`);
+  if (!res.ok) throw new Error("chart fetch failed");
+  return res.json();
 }
 
 export async function getRadar(top = 10): Promise<RadarResponse> {

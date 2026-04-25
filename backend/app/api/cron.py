@@ -8,15 +8,9 @@ import os
 from datetime import date as date_cls, datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 
-from app.services import (
-    kis_client,
-    naver_rss,
-    news_classifier,
-    theme_score,
-    theme_store,
-)
+from app.services import kis_client, theme_score, theme_store
 
 
 router = APIRouter(prefix="/cron", tags=["cron"])
@@ -67,13 +61,10 @@ def score_themes(request: Request) -> dict[str, Any]:
     if not themes:
         return {"ok": True, "themes": 0}
 
-    # Single-pass DB reads.
     all_mappings = theme_store.list_theme_stocks()
     all_codes = sorted({m["stock_code"] for m in all_mappings})
     all_snapshots = theme_store.latest_snapshots(all_codes)
-    news_counts = theme_store.news_count_24h_by_theme()
 
-    # Group mappings by theme_id in memory.
     mappings_by_theme: dict[str, list[dict[str, Any]]] = {}
     for m in all_mappings:
         mappings_by_theme.setdefault(m["theme_id"], []).append(m)
@@ -89,13 +80,10 @@ def score_themes(request: Request) -> dict[str, Any]:
             stock_data.append({**snap, "name": m["stock_name"]})
 
         score = theme_score.calculate_theme_score(stock_data)
-        news_count = news_counts.get(t["id"], 0)
-        is_confirmed = theme_score.is_triple_confirmed(score, news_count)
         scored.append({
             "theme_id": t["id"],
             "score_dict": score,
-            "is_confirmed": is_confirmed,
-            "news_count_24h": news_count,
+            "is_confirmed": score["is_score_confirmed"],
             "stock_data": stock_data,
         })
 
@@ -106,7 +94,7 @@ def score_themes(request: Request) -> dict[str, Any]:
             "score": item["score_dict"],
             "rank": rank_idx,
             "is_confirmed": item["is_confirmed"],
-            "news_count_24h": item["news_count_24h"],
+            "news_count_24h": 0,
             "stocks_data": item["stock_data"],
         }
         for rank_idx, item in enumerate(scored, start=1)
@@ -120,57 +108,7 @@ def score_themes(request: Request) -> dict[str, Any]:
     }
 
 
-# ───── 3. poll-news (every 30 min) ─────
-
-@router.post("/poll-news")
-def poll_news(request: Request) -> dict[str, Any]:
-    _verify_cron(request)
-    headlines = naver_rss.fetch_naver_finance_rss(per_feed_limit=20)
-    inserted = theme_store.insert_headlines(headlines)
-    return {"ok": True, "fetched": len(headlines), "inserted": inserted}
-
-
-# ───── 4. classify-news (every 30 min) ─────
-
-@router.post("/classify-news")
-def classify_news(request: Request) -> dict[str, Any]:
-    _verify_cron(request)
-    pending = theme_store.pending_headlines(limit=30)
-    if not pending:
-        return {"ok": True, "pending": 0}
-
-    themes = theme_store.list_themes(active_only=True)
-    classifications = news_classifier.classify_headlines_to_themes(
-        headlines=[{"id": h["id"], "title": h["title"]} for h in pending],
-        themes=[{"code": t["code"], "name": t["name"], "keywords": t["keywords"]} for t in themes],
-    )
-
-    by_id = {h["id"]: h for h in pending}
-    items: list[dict[str, Any]] = []
-    for c in classifications:
-        hid = c.get("headline_id")
-        h = by_id.get(hid)
-        if h is None:
-            continue
-        for code in (c.get("theme_codes") or []):
-            items.append({
-                "theme_code": code,
-                "title": h["title"],
-                "url": h["url"],
-                "source": h["source"],
-                "published_at": h["published_at"],
-            })
-
-    inserted = theme_store.insert_theme_news(items)
-    theme_store.mark_headlines_classified([h["id"] for h in pending])
-    return {
-        "ok": True,
-        "classified": len(pending),
-        "links_inserted": inserted,
-    }
-
-
-# ───── 5. daily-snapshot (15:35 KST) ─────
+# ───── 3. daily-snapshot (15:35 KST) ─────
 
 @router.post("/daily-snapshot")
 def daily_snapshot(request: Request) -> dict[str, Any]:
@@ -211,6 +149,5 @@ def daily_snapshot(request: Request) -> dict[str, Any]:
     ]
     theme_store.upsert_daily_scores_bulk(today, bulk_items)
 
-    # housekeeping: trim old snapshots
     deleted = theme_store.cleanup_old_snapshots(days=30)
     return {"ok": True, "themes": len(scored), "snapshot_date": today, "old_snapshots_deleted": deleted}

@@ -24,6 +24,7 @@ from app.db import get_connection
 KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
 KIS_PROVIDER_KEY = "kis"
 QUOTE_TR_ID = "FHKST01010100"
+DAILY_CHART_TR_ID = "FHKST03010100"
 THROTTLE_SECONDS = 0.07  # ~14 calls/sec, conservative under 20/sec limit
 
 
@@ -138,6 +139,65 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
         }
     except Exception:
         return None
+
+
+def fetch_daily_chart(
+    stock_code: str,
+    days: int = 60,
+    token: str | None = None,
+) -> dict[str, Any]:
+    """Fetch domestic stock daily candles for the past `days` days.
+
+    Returns dict with keys:
+      - code, count, candles=[{date(YYYY-MM-DD), open, high, low, close, volume}, ...]
+        sorted oldest -> newest.
+    """
+    tok = token or get_access_token()
+    end_dt = datetime.now(timezone.utc) + timedelta(hours=9)  # KST
+    # Pad start window for non-trading days.
+    start_dt = end_dt - timedelta(days=int(days * 1.6) + 5)
+    url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+    headers = {**_quote_headers(tok), "tr_id": DAILY_CHART_TR_ID}
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "J",
+        "FID_INPUT_ISCD": stock_code,
+        "FID_INPUT_DATE_1": start_dt.strftime("%Y%m%d"),
+        "FID_INPUT_DATE_2": end_dt.strftime("%Y%m%d"),
+        "FID_PERIOD_DIV_CODE": "D",
+        "FID_ORG_ADJ_PRC": "0",
+    }
+    try:
+        res = requests.get(url, headers=headers, params=params, timeout=10)
+        if res.status_code == 401:
+            tok = get_access_token(force_refresh=True)
+            headers = {**_quote_headers(tok), "tr_id": DAILY_CHART_TR_ID}
+            res = requests.get(url, headers=headers, params=params, timeout=10)
+        res.raise_for_status()
+        data = res.json()
+        if data.get("rt_cd") != "0":
+            return {"code": stock_code, "count": 0, "candles": [], "error": data.get("msg1")}
+        rows = data.get("output2") or []
+        candles = []
+        for r in rows:
+            d = r.get("stck_bsop_date")
+            if not d or len(d) != 8:
+                continue
+            try:
+                candles.append({
+                    "date": f"{d[0:4]}-{d[4:6]}-{d[6:8]}",
+                    "open": float(r.get("stck_oprc") or 0),
+                    "high": float(r.get("stck_hgpr") or 0),
+                    "low": float(r.get("stck_lwpr") or 0),
+                    "close": float(r.get("stck_clpr") or 0),
+                    "volume": int(r.get("acml_vol") or 0),
+                })
+            except (TypeError, ValueError):
+                continue
+        candles.sort(key=lambda c: c["date"])
+        candles = candles[-days:]
+        return {"code": stock_code, "count": len(candles), "candles": candles}
+    except Exception as e:
+        return {"code": stock_code, "count": 0, "candles": [], "error": str(e)[:200]}
 
 
 def fetch_quotes(

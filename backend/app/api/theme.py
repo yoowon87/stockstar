@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.services import theme_store
+from app.services import kis_client, theme_store
 
 
 router = APIRouter(prefix="/theme", tags=["theme"])
@@ -17,9 +17,6 @@ router = APIRouter(prefix="/theme", tags=["theme"])
 @router.get("/radar")
 def get_radar(top: int = 10) -> dict[str, Any]:
     rows = theme_store.get_realtime_radar(top_n=top)
-    # attach recent news per theme (top 3)
-    for r in rows:
-        r["news"] = theme_store.recent_news_for_theme(r["theme_id"], limit=3)
     return {"top": top, "themes": rows}
 
 
@@ -41,8 +38,15 @@ def get_by_code(code: str) -> dict[str, Any]:
     if t is None:
         raise HTTPException(status_code=404, detail="theme not found")
     stocks = theme_store.list_theme_stocks(theme_id=t["id"])
-    news = theme_store.recent_news_for_theme(t["id"], limit=10)
-    return {"theme": t, "stocks": stocks, "news": news}
+    return {"theme": t, "stocks": stocks}
+
+
+# ─── KIS daily chart for a single stock ───
+
+@router.get("/stock/{stock_code}/chart")
+def get_stock_chart(stock_code: str, days: int = 60) -> dict[str, Any]:
+    days = max(5, min(days, 250))
+    return kis_client.fetch_daily_chart(stock_code, days=days)
 
 
 # ─── admin ───
