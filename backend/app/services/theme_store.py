@@ -283,7 +283,7 @@ def get_realtime_radar(top_n: int = 10) -> list[dict[str, Any]]:
             "leader_name": r["leader_name"],
             "leader_change": float(r["leader_change"] or 0),
             "news_count_24h": r["news_count_24h"],
-            "stocks": json.loads(r["stocks_data"]) if r["stocks_data"] else [],
+            "stocks": _as_list(r["stocks_data"]),
         })
     return out
 
@@ -399,7 +399,7 @@ def daily_top_themes(date_iso: str, top_n: int = 10) -> list[dict[str, Any]]:
         "leader_code": r["leader_code"],
         "leader_name": r["leader_name"],
         "leader_change": float(r["leader_change"] or 0),
-        "rising_stocks": json.loads(r["rising_stocks"]) if r["rising_stocks"] else [],
+        "rising_stocks": _as_list(r["rising_stocks"]),
     } for r in rows]
 
 
@@ -516,6 +516,23 @@ def recent_news_for_theme(theme_id: str, limit: int = 5) -> list[dict[str, Any]]
 
 
 # ───── Helpers ─────
+
+def _as_list(value: Any) -> list:
+    """JSONB columns come back as Python list/dict already; tolerate string too."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        return [value]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            return []
+        return parsed if isinstance(parsed, list) else [parsed]
+    return []
+
 
 def _row_to_theme(r) -> dict[str, Any]:
     return {
