@@ -14,6 +14,6 @@
     }
   },
   "crons": [
-    { "path": "/api/cron/daily-snapshot", "schedule": "35 6 * * 1-5" }
+    { "path": "/api/cron/daily-snapshot", "schedule": "35 11 * * 1-5" }
   ]
 }
