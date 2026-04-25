@@ -21,11 +21,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 const navItems = [
   { to: "/", label: "Home", icon: "home", end: true },
+  { to: "/theme-radar", label: "Radar", icon: "radar", accent: true },
   { to: "/journal", label: "Journal", icon: "journal" },
   { to: "/portfolio", label: "Portfolio", icon: "pie" },
   { to: "/edge", label: "Edge", icon: "target" },
   { to: "/review", label: "Review", icon: "calendar" },
-  { to: "/theme-radar", label: "Radar", icon: "radar", accent: true },
 ];
 
 function NavIcon({ type, size = 14 }: { type: string; size?: number }) {

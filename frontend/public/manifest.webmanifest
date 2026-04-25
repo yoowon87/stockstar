@@ -1,24 +1,36 @@
 {
   "name": "StockStar",
   "short_name": "StockStar",
-  "description": "Personal stock research dashboard for portfolio, news, and category-based exploration.",
+  "description": "Personal investment OS — journal, portfolio, edge research, theme radar.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b1724",
-  "theme_color": "#0b1724",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
   "lang": "ko",
   "icons": [
+    {
+      "src": "/icons/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
-    },
-    {
-      "src": "/icons/maskable-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
     }
   ]
 }
