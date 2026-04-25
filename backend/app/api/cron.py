@@ -67,16 +67,23 @@ def score_themes(request: Request) -> dict[str, Any]:
     if not themes:
         return {"ok": True, "themes": 0}
 
+    # Single-pass DB reads.
+    all_mappings = theme_store.list_theme_stocks()
+    all_codes = sorted({m["stock_code"] for m in all_mappings})
+    all_snapshots = theme_store.latest_snapshots(all_codes)
     news_counts = theme_store.news_count_24h_by_theme()
-    scored: list[dict[str, Any]] = []
 
+    # Group mappings by theme_id in memory.
+    mappings_by_theme: dict[str, list[dict[str, Any]]] = {}
+    for m in all_mappings:
+        mappings_by_theme.setdefault(m["theme_id"], []).append(m)
+
+    scored: list[dict[str, Any]] = []
     for t in themes:
-        mappings = theme_store.list_theme_stocks(theme_id=t["id"])
-        codes = [m["stock_code"] for m in mappings]
-        snapshots = theme_store.latest_snapshots(codes)
+        mappings = mappings_by_theme.get(t["id"], [])
         stock_data = []
         for m in mappings:
-            snap = snapshots.get(m["stock_code"])
+            snap = all_snapshots.get(m["stock_code"])
             if snap is None:
                 continue
             stock_data.append({**snap, "name": m["stock_name"]})
@@ -167,15 +174,21 @@ def daily_snapshot(request: Request) -> dict[str, Any]:
     _verify_cron(request)
     today = date_cls.today().isoformat()
     themes = theme_store.list_themes(active_only=True)
-    scored: list[dict[str, Any]] = []
 
+    all_mappings = theme_store.list_theme_stocks()
+    all_codes = sorted({m["stock_code"] for m in all_mappings})
+    all_snapshots = theme_store.latest_snapshots(all_codes)
+
+    mappings_by_theme: dict[str, list[dict[str, Any]]] = {}
+    for m in all_mappings:
+        mappings_by_theme.setdefault(m["theme_id"], []).append(m)
+
+    scored: list[dict[str, Any]] = []
     for t in themes:
-        mappings = theme_store.list_theme_stocks(theme_id=t["id"])
-        codes = [m["stock_code"] for m in mappings]
-        snapshots = theme_store.latest_snapshots(codes)
+        mappings = mappings_by_theme.get(t["id"], [])
         stock_data = []
         for m in mappings:
-            snap = snapshots.get(m["stock_code"])
+            snap = all_snapshots.get(m["stock_code"])
             if snap is None:
                 continue
             stock_data.append({**snap, "name": m["stock_name"]})
