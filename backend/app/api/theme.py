@@ -69,9 +69,12 @@ class ThemeStockIn(BaseModel):
 @router.get("/admin/themes")
 def admin_list_themes() -> dict[str, Any]:
     themes = theme_store.list_themes(active_only=False)
-    # attach stock counts
+    all_mappings = theme_store.list_theme_stocks()
+    groups: dict[str, list] = {}
+    for m in all_mappings:
+        groups.setdefault(m["theme_id"], []).append(m)
     for t in themes:
-        stocks = theme_store.list_theme_stocks(theme_id=t["id"])
+        stocks = groups.get(t["id"], [])
         t["stock_count"] = len(stocks)
         t["stocks"] = stocks
     return {"themes": themes}
