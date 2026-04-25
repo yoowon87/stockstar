@@ -291,14 +291,14 @@ def fetch_daily_chart(
 
 def fetch_quotes(
     stock_codes: list[str],
-    max_workers: int = 5,
+    max_workers: int = 3,
 ) -> dict[str, dict[str, Any]]:
     """Fetch quotes for many stocks in parallel.
 
-    KIS personal API limit is ~20 req/sec, but in practice 10 concurrent
-    workers triggers '초당 거래건수 초과'. 5 workers + per-call retry on
-    rate-limit keeps the failure rate near zero while staying within the
-    Vercel 60s budget for 150+ codes. Returns {code: quote_dict}.
+    KIS personal API caps at ~20 req/sec but enforces it strictly per moment.
+    Empirically 5 concurrent workers still hits '초당 거래건수 초과' on ~30%
+    of calls. 3 workers + per-call retry-on-rate-limit gives near-zero misses
+    and finishes ~150 codes in roughly 30s (well inside Vercel 60s budget).
     """
     if not stock_codes:
         return {}
