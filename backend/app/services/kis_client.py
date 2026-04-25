@@ -131,18 +131,19 @@ def fetch_quote(stock_code: str, token: str | None = None) -> dict[str, Any] | N
             res = _call(tok)
         res.raise_for_status()
         data = res.json()
-        if data.get("rt_cd") != "0":
+        # Retry up to 2 times on KIS rate-limit responses.
+        for _attempt in range(2):
+            if data.get("rt_cd") == "0":
+                break
             msg = data.get("msg1", "")
-            if "초과" in msg or "한도" in msg:
-                # KIS rate limit — back off and retry once
-                time.sleep(0.4)
-                res = _call(tok)
-                res.raise_for_status()
-                data = res.json()
-                if data.get("rt_cd") != "0":
-                    return None
-            else:
+            if "초과" not in msg and "한도" not in msg:
                 return None
+            time.sleep(0.5)
+            res = _call(tok)
+            res.raise_for_status()
+            data = res.json()
+        if data.get("rt_cd") != "0":
+            return None
         out = data.get("output", {})
         def _to_float(v):
             try:
