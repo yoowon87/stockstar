@@ -1055,3 +1055,9 @@ h1, h2, h3, h4, p {
 .mobile-nav-scroll > a {
   scroll-snap-align: center;
 }
+
+/* Safety: never let any page push horizontal scroll on mobile */
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

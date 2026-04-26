@@ -189,8 +189,8 @@ export default function App() {
             </span>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex gap-0.5">
+          {/* Navigation (desktop only — mobile uses bottom nav) */}
+          <nav className="hidden sm:flex gap-0.5">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
