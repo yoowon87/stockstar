@@ -1041,3 +1041,17 @@ h1, h2, h3, h4, p {
     grid-template-columns: 1fr;
   }
 }
+
+/* Mobile bottom nav: horizontal scroll without visible scrollbar */
+.mobile-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.mobile-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+.mobile-nav-scroll > a {
+  scroll-snap-align: center;
+}

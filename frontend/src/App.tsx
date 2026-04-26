@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { HomePage } from "./pages/HomePage";
@@ -301,38 +301,61 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* ── Mobile Bottom Nav ── */}
-      <nav
-        className="sm:hidden flex flex-shrink-0"
-        style={{
-          background: "rgba(8, 9, 13, 0.96)",
-          backdropFilter: "blur(20px)",
-          borderTop: "1px solid var(--border-default)",
-        }}
-      >
-        {navItems.map((item) => {
-          const isActive = item.end
-            ? location.pathname === item.to
-            : location.pathname.startsWith(item.to);
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors"
-              style={{
-                color: isActive ? "var(--gold)" : "var(--text-muted)",
-                fontFamily: "Outfit",
-                fontSize: 10,
-                fontWeight: isActive ? 600 : 400,
-              }}
-            >
-              <NavIcon type={item.icon} size={16} />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+      {/* ── Mobile Bottom Nav (horizontally scrollable) ── */}
+      <MobileBottomNav location={location} />
     </div>
+  );
+}
+
+function MobileBottomNav({ location }: { location: ReturnType<typeof useLocation> }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll the active item into view so off-screen tabs are still reachable.
+  useEffect(() => {
+    const el = scrollRef.current?.querySelector('[data-active="true"]') as HTMLElement | null;
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [location.pathname]);
+
+  return (
+    <nav
+      ref={scrollRef}
+      className="sm:hidden flex flex-shrink-0 mobile-nav-scroll"
+      style={{
+        background: "rgba(8, 9, 13, 0.96)",
+        backdropFilter: "blur(20px)",
+        borderTop: "1px solid var(--border-default)",
+        overflowX: "auto",
+        overflowY: "hidden",
+      }}
+    >
+      {navItems.map((item) => {
+        const isActive = item.end
+          ? location.pathname === item.to
+          : location.pathname.startsWith(item.to);
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            data-active={isActive ? "true" : "false"}
+            className="flex flex-col items-center gap-0.5 py-2.5 transition-colors"
+            style={{
+              flex: "0 0 auto",
+              minWidth: 64,
+              padding: "10px 12px",
+              color: isActive ? "var(--gold)" : "var(--text-muted)",
+              fontFamily: "Outfit",
+              fontSize: 10,
+              fontWeight: isActive ? 600 : 400,
+              borderTop: isActive ? "2px solid var(--gold)" : "2px solid transparent",
+              marginTop: -1,
+            }}
+          >
+            <NavIcon type={item.icon} size={16} />
+            <span>{item.label}</span>
+          </NavLink>
+        );
+      })}
+    </nav>
   );
 }
