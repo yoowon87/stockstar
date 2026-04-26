@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.services import kis_client, theme_score, theme_store
+from app.services import kis_client, notes_store, theme_score, theme_store
 
 
 router = APIRouter(prefix="/cron", tags=["cron"])
@@ -151,3 +151,36 @@ def daily_snapshot(request: Request) -> dict[str, Any]:
 
     deleted = theme_store.cleanup_old_snapshots(days=30)
     return {"ok": True, "themes": len(scored), "snapshot_date": today, "old_snapshots_deleted": deleted}
+
+
+# ───── 4. track-note-prices (16:35 KST after market close) ─────
+
+@router.post("/track-note-prices")
+def track_note_prices(request: Request) -> dict[str, Any]:
+    _verify_cron(request)
+    summary = {}
+    touched_notes: set[str] = set()
+    for window in ("1d", "7d", "30d"):
+        pairs = notes_store.stock_codes_needing_update(window)
+        if not pairs:
+            summary[window] = 0
+            continue
+        codes = sorted({code for _nid, code in pairs})
+        quotes = kis_client.fetch_quotes(codes)
+        updated = 0
+        for note_id, code in pairs:
+            q = quotes.get(code)
+            if q is None or q.get("price") is None:
+                continue
+            notes_store.write_price_update(note_id, code, window, float(q["price"]))
+            touched_notes.add(note_id)
+            updated += 1
+        summary[window] = updated
+
+    for note_id in touched_notes:
+        try:
+            notes_store.auto_verify(note_id)
+        except Exception:
+            continue
+
+    return {"ok": True, "updates": summary, "notes_verified_checked": len(touched_notes)}

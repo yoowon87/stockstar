@@ -4,6 +4,9 @@ import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { HomePage } from "./pages/HomePage";
 import { NewsPage } from "./pages/NewsPage";
 import { NewsHubPage } from "./pages/NewsHubPage";
+import { NoteListPage } from "./pages/NoteListPage";
+import { NoteNewPage } from "./pages/NoteNewPage";
+import { NoteDetailPage } from "./pages/NoteDetailPage";
 import { JournalPage } from "./pages/JournalPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { EdgePage } from "./pages/EdgePage";
@@ -23,6 +26,8 @@ interface BeforeInstallPromptEvent extends Event {
 const navItems = [
   { to: "/", label: "Home", icon: "home", end: true },
   { to: "/theme-radar", label: "Radar", icon: "radar", accent: true },
+  { to: "/news", label: "News", icon: "news" },
+  { to: "/notes", label: "Vault", icon: "vault" },
   { to: "/journal", label: "Journal", icon: "journal" },
   { to: "/portfolio", label: "Portfolio", icon: "pie" },
   { to: "/edge", label: "Edge", icon: "target" },
@@ -89,6 +94,16 @@ function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
           <line x1="4.5" y1="5" x2="11.5" y2="5" />
           <line x1="4.5" y1="8" x2="11.5" y2="8" />
           <line x1="4.5" y1="11" x2="9" y2="11" />
+        </svg>
+      );
+    case "vault":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="12" height="11" rx="1.2" />
+          <path d="M5 6 h6" />
+          <path d="M5 9 h4" />
+          <circle cx="11" cy="9" r="1.2" />
+          <path d="M11 7.5 v0.3 M11 10.5 v0.3 M9.5 9 h0.3 M12.5 9 h0.3" strokeWidth="1" />
         </svg>
       );
     default:
@@ -275,6 +290,9 @@ export default function App() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/news" element={<NewsHubPage />} />
           <Route path="/news/:newsId" element={<NewsPage />} />
+          <Route path="/notes" element={<NoteListPage />} />
+          <Route path="/notes/new" element={<NoteNewPage />} />
+          <Route path="/notes/:id" element={<NoteDetailPage />} />
           <Route path="/theme-radar" element={<ThemeRadarPage />} />
           <Route path="/theme-calendar" element={<ThemeCalendarPage />} />
           <Route path="/theme-detail/:code" element={<ThemeDetailPage />} />
