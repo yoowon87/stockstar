@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import { HomePage } from "./pages/HomePage";
 import { NewsPage } from "./pages/NewsPage";
+import { NewsHubPage } from "./pages/NewsHubPage";
 import { JournalPage } from "./pages/JournalPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { EdgePage } from "./pages/EdgePage";
@@ -79,6 +80,15 @@ function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
           <circle cx="8" cy="8" r="3.5" strokeDasharray="2 2" />
           <line x1="8" y1="8" x2="13" y2="4" />
           <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "news":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="12" height="12" rx="1.5" />
+          <line x1="4.5" y1="5" x2="11.5" y2="5" />
+          <line x1="4.5" y1="8" x2="11.5" y2="8" />
+          <line x1="4.5" y1="11" x2="9" y2="11" />
         </svg>
       );
     default:
@@ -263,6 +273,7 @@ export default function App() {
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/edge" element={<EdgePage />} />
           <Route path="/review" element={<ReviewPage />} />
+          <Route path="/news" element={<NewsHubPage />} />
           <Route path="/news/:newsId" element={<NewsPage />} />
           <Route path="/theme-radar" element={<ThemeRadarPage />} />
           <Route path="/theme-calendar" element={<ThemeCalendarPage />} />
