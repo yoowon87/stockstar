@@ -20,16 +20,25 @@ jobs:
   poll-and-score:
     runs-on: ubuntu-latest
     steps:
-      - name: Poll stocks (KIS quotes -> snapshots)
+      # Poll is split into two chunks so each call stays well under Vercel's
+      # 60s function ceiling (single-chunk = ~60s = right at the limit).
+      - name: Poll stocks chunk 1 (codes 0-79)
         run: |
           curl --fail-with-body -X POST \
                -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-               --max-time 60 \
-               https://stockstar-ten.vercel.app/api/cron/poll-stocks
+               --max-time 70 \
+               "https://stockstar-ten.vercel.app/api/cron/poll-stocks?offset=0&limit=80"
+
+      - name: Poll stocks chunk 2 (codes 80+)
+        run: |
+          curl --fail-with-body -X POST \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --max-time 70 \
+               "https://stockstar-ten.vercel.app/api/cron/poll-stocks?offset=80&limit=200"
 
       - name: Score themes (calculate + upsert realtime)
         run: |
           curl --fail-with-body -X POST \
                -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-               --max-time 60 \
+               --max-time 70 \
                https://stockstar-ten.vercel.app/api/cron/score-themes

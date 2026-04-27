@@ -32,20 +32,40 @@ def _all_active_stock_codes() -> list[str]:
 
 
 # ───── 1. poll-stocks (every 5 min, market hours) ─────
+# Chunkable via ?offset=&limit= so the workflow can split work across calls
+# and stay under Vercel's 60s function ceiling. Default = all codes.
 
 @router.post("/poll-stocks")
 def poll_stocks(request: Request) -> dict[str, Any]:
     _verify_cron(request)
     codes = _all_active_stock_codes()
+    total = len(codes)
     if not codes:
         return {"ok": True, "polled": 0, "skipped": "no codes"}
 
-    quotes = kis_client.fetch_quotes(codes)
+    try:
+        offset = max(0, int(request.query_params.get("offset", "0")))
+    except ValueError:
+        offset = 0
+    try:
+        limit_raw = request.query_params.get("limit")
+        limit = int(limit_raw) if limit_raw is not None else len(codes)
+    except ValueError:
+        limit = len(codes)
+    chunk = codes[offset : offset + limit] if limit > 0 else codes[offset:]
+
+    if not chunk:
+        return {"ok": True, "polled": 0, "skipped": "empty chunk", "total": total}
+
+    quotes = kis_client.fetch_quotes(chunk)
     snapshot_at = datetime.now(timezone.utc).isoformat()
     inserted = theme_store.insert_snapshots(snapshot_at, quotes)
     return {
         "ok": True,
-        "requested": len(codes),
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "requested": len(chunk),
         "fetched": len(quotes),
         "inserted": inserted,
         "snapshot_at": snapshot_at,
