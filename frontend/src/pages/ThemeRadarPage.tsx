@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "./_shared";
 import { StockChartModal } from "../components/StockChartModal";
 import {
   formatKoreanAmount,
   getRadar,
+  isKisActiveHours,
+  refreshPoll,
+  refreshScore,
   type RadarTheme,
   type ThemeStock,
 } from "../services/themeApi";
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const STALE_THRESHOLD_MS = 5 * 60 * 1000; // data older than this = trigger refresh
 const CATEGORY_LABELS: Record<string, string> = {
   A: "반도체/AI",
   B: "AI/SW/로봇",
@@ -17,6 +21,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   D: "소재/조선",
   E: "금융/바이오",
 };
+
+type RefreshStage = { label: string; step: number; total: number } | null;
 
 export function ThemeRadarPage() {
   const navigate = useNavigate();
@@ -28,23 +34,79 @@ export function ThemeRadarPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<{ code: string; name: string } | null>(null);
+  const [refreshStage, setRefreshStage] = useState<RefreshStage>(null);
+  const refreshingRef = useRef(false);
 
-  function reload() {
+  const reload = useCallback(async (): Promise<RadarTheme[]> => {
     setError("");
-    getRadar(topN)
-      .then((r) => {
-        setThemes(r.themes);
-        setLastUpdate(new Date());
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    reload();
-    const id = window.setInterval(reload, REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(id);
+    try {
+      const r = await getRadar(topN);
+      setThemes(r.themes);
+      setLastUpdate(new Date());
+      return r.themes;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "조회 실패");
+      return [];
+    } finally {
+      setLoading(false);
+    }
   }, [topN]);
+
+  /** Run KIS poll + score sequence. ~30s + 30s + 15s = ~75s total. */
+  const runFullRefresh = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    try {
+      setRefreshStage({ label: "종목 시세 조회 1/2", step: 1, total: 3 });
+      await refreshPoll(0, 80);
+      setRefreshStage({ label: "종목 시세 조회 2/2", step: 2, total: 3 });
+      await refreshPoll(80, 200);
+      setRefreshStage({ label: "테마 점수 계산", step: 3, total: 3 });
+      await refreshScore();
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? `갱신 실패: ${e.message}` : "갱신 실패");
+    } finally {
+      refreshingRef.current = false;
+      setRefreshStage(null);
+    }
+  }, [reload]);
+
+  /** Auto-refresh trigger: only if data is stale AND market hours. */
+  const refreshIfStale = useCallback(
+    (currentThemes: RadarTheme[]) => {
+      if (refreshingRef.current) return;
+      if (!isKisActiveHours()) return;
+      const newest = currentThemes
+        .map((t) => (t.updated_at ? new Date(t.updated_at).getTime() : 0))
+        .reduce((a, b) => Math.max(a, b), 0);
+      if (newest === 0) {
+        // No prior data at all -> attempt initial refresh.
+        void runFullRefresh();
+        return;
+      }
+      const ageMs = Date.now() - newest;
+      if (ageMs > STALE_THRESHOLD_MS) void runFullRefresh();
+    },
+    [runFullRefresh],
+  );
+
+  // Initial load + 5min polling. Both call reload first; on stale, kick refresh.
+  useEffect(() => {
+    let cancelled = false;
+    reload().then((rows) => {
+      if (!cancelled) refreshIfStale(rows);
+    });
+    const id = window.setInterval(() => {
+      reload().then((rows) => {
+        if (!cancelled) refreshIfStale(rows);
+      });
+    }, REFRESH_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [topN, reload, refreshIfStale]);
 
   const visible = useMemo(
     () => (categoryFilter === "ALL" ? themes : themes.filter((t) => t.category === categoryFilter)),
@@ -86,10 +148,18 @@ export function ThemeRadarPage() {
             </select>
             <button onClick={() => navigate("/theme-calendar")} style={btnSecondaryStyle}>📅 캘린더</button>
             <button onClick={() => navigate("/theme-admin")} style={btnSecondaryStyle}>⚙️ 관리</button>
-            <button onClick={reload} style={btnPrimaryStyle}>새로고침</button>
+            <button
+              onClick={() => void runFullRefresh()}
+              disabled={!!refreshStage}
+              style={{ ...btnPrimaryStyle, opacity: refreshStage ? 0.6 : 1, cursor: refreshStage ? "wait" : "pointer" }}
+            >
+              {refreshStage ? "갱신 중…" : "새로고침"}
+            </button>
           </div>
         }
       />
+
+      {refreshStage && <RefreshBanner stage={refreshStage} />}
 
       <div className="flex-1 min-h-0 overflow-auto p-6 max-w-6xl mx-auto w-full space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -112,18 +182,7 @@ export function ThemeRadarPage() {
         </div>
 
         {lastUpdate && (
-          <div
-            style={{
-              fontFamily: "Outfit",
-              fontSize: 11,
-              color: "var(--text-muted)",
-              textAlign: "right" as const,
-            }}
-          >
-            마지막 업데이트:{" "}
-            {lastUpdate.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} ·{" "}
-            {visible.length}개 표시
-          </div>
+          <SnapshotAgeLine themes={themes} count={visible.length} />
         )}
 
         {loading && themes.length === 0 && (
@@ -469,6 +528,85 @@ function scoreColor(score: number): string {
   if (score >= 0.4) return "var(--blue)";
   return "var(--text-secondary)";
 }
+
+function RefreshBanner({ stage }: { stage: { label: string; step: number; total: number } }) {
+  const pct = Math.round((stage.step / stage.total) * 100);
+  return (
+    <div
+      style={{
+        padding: "8px 16px",
+        background: "linear-gradient(90deg, rgba(56, 217, 169, 0.10), rgba(212, 165, 116, 0.10))",
+        borderBottom: "1px solid rgba(56, 217, 169, 0.30)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        fontFamily: "Outfit",
+        fontSize: 11,
+        color: "var(--text-secondary)",
+      }}
+    >
+      <span>🔄</span>
+      <span style={{ fontWeight: 600 }}>
+        {stage.step}/{stage.total} · {stage.label}
+      </span>
+      <div
+        style={{
+          flex: 1,
+          height: 4,
+          borderRadius: 2,
+          background: "rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          maxWidth: 320,
+        }}
+      >
+        <div
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            background: "linear-gradient(90deg, var(--up), var(--gold-bright))",
+            transition: "width 0.4s ease",
+          }}
+        />
+      </div>
+      <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{pct}%</span>
+    </div>
+  );
+}
+
+function SnapshotAgeLine({ themes, count }: { themes: RadarTheme[]; count: number }) {
+  const newest = themes
+    .map((t) => (t.updated_at ? new Date(t.updated_at).getTime() : 0))
+    .reduce((a, b) => Math.max(a, b), 0);
+  if (newest === 0) {
+    return (
+      <div style={ageLineStyle}>
+        스냅샷 없음 · {count}개 표시
+      </div>
+    );
+  }
+  const ageSec = Math.floor((Date.now() - newest) / 1000);
+  const ageLabel =
+    ageSec < 60
+      ? `${ageSec}초 전`
+      : ageSec < 3600
+        ? `${Math.floor(ageSec / 60)}분 전`
+        : `${Math.floor(ageSec / 3600)}시간 전`;
+  const isStale = ageSec > 300;
+  return (
+    <div style={ageLineStyle}>
+      스냅샷:{" "}
+      <span style={{ color: isStale ? "var(--down)" : "var(--up)", fontWeight: 600 }}>{ageLabel}</span>{" "}
+      · {count}개 표시
+    </div>
+  );
+}
+
+const ageLineStyle: React.CSSProperties = {
+  fontFamily: "Outfit",
+  fontSize: 11,
+  color: "var(--text-muted)",
+  textAlign: "right" as const,
+};
 
 function EmptyState() {
   return (

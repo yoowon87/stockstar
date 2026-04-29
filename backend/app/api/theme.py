@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.api import cron as cron_api
 from app.services import kis_client, theme_store
 
 
@@ -39,6 +40,21 @@ def get_by_code(code: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="theme not found")
     stocks = theme_store.list_theme_stocks(theme_id=t["id"])
     return {"theme": t, "stocks": stocks}
+
+
+# ─── On-demand refresh (user-triggered from radar page) ───
+# Same logic as the cron endpoints but auth'd via APP_PASSWORD middleware
+# instead of CRON_SECRET. Frontend calls these sequentially when the radar
+# data is stale (covers GH Actions cron drops).
+
+@router.post("/refresh/poll")
+def refresh_poll(offset: int = 0, limit: int = 80) -> dict[str, Any]:
+    return cron_api.do_poll_chunk(offset, limit)
+
+
+@router.post("/refresh/score")
+def refresh_score() -> dict[str, Any]:
+    return cron_api.do_score_themes()
 
 
 # ─── KIS daily chart for a single stock ───

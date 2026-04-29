@@ -181,6 +181,28 @@ export async function getRadar(top = 10): Promise<RadarResponse> {
   return res.json();
 }
 
+export async function refreshPoll(offset: number, limit: number): Promise<{ ok: boolean; fetched?: number; inserted?: number }> {
+  const res = await fetch(`${API_BASE}/theme/refresh/poll?offset=${offset}&limit=${limit}`, { method: "POST" });
+  if (!res.ok) throw new Error(`poll failed (HTTP ${res.status})`);
+  return res.json();
+}
+
+export async function refreshScore(): Promise<{ ok: boolean; scored?: number; confirmed?: number }> {
+  const res = await fetch(`${API_BASE}/theme/refresh/score`, { method: "POST" });
+  if (!res.ok) throw new Error(`score failed (HTTP ${res.status})`);
+  return res.json();
+}
+
+/** True during KST Mon-Fri 07:00-20:00 (when KIS quotes can change). */
+export function isKisActiveHours(now = new Date()): boolean {
+  // now.getTime() is already UTC ms; shift by +9h to read KST fields via getUTC*().
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const dow = kst.getUTCDay(); // 0=Sun ... 6=Sat
+  if (dow === 0 || dow === 6) return false;
+  const h = kst.getUTCHours();
+  return h >= 7 && h < 20;
+}
+
 export async function getCalendar(start: string, end: string): Promise<CalendarResponse> {
   const res = await fetch(`${API_BASE}/theme/calendar?start=${start}&end=${end}`);
   if (!res.ok) throw new Error("calendar fetch failed");

@@ -31,28 +31,25 @@ def _all_active_stock_codes() -> list[str]:
     return sorted({m["stock_code"] for m in mappings})
 
 
-# ───── 1. poll-stocks (every 5 min, market hours) ─────
-# Chunkable via ?offset=&limit= so the workflow can split work across calls
-# and stay under Vercel's 60s function ceiling. Default = all codes.
+# ───── Reusable internals (called from cron AND from /theme/refresh) ─────
 
-@router.post("/poll-stocks")
-def poll_stocks(request: Request) -> dict[str, Any]:
-    _verify_cron(request)
+def do_poll_chunk(offset: int, limit: int | None) -> dict[str, Any]:
+    """Fetch quotes for a slice of active stock codes and insert snapshots.
+
+    `limit=None` means 'all remaining codes from offset'.
+    """
     codes = _all_active_stock_codes()
     total = len(codes)
     if not codes:
         return {"ok": True, "polled": 0, "skipped": "no codes"}
 
-    try:
-        offset = max(0, int(request.query_params.get("offset", "0")))
-    except ValueError:
-        offset = 0
-    try:
-        limit_raw = request.query_params.get("limit")
-        limit = int(limit_raw) if limit_raw is not None else len(codes)
-    except ValueError:
-        limit = len(codes)
-    chunk = codes[offset : offset + limit] if limit > 0 else codes[offset:]
+    offset = max(0, offset)
+    if limit is None or limit <= 0:
+        chunk = codes[offset:]
+        applied_limit = total - offset
+    else:
+        chunk = codes[offset : offset + limit]
+        applied_limit = limit
 
     if not chunk:
         return {"ok": True, "polled": 0, "skipped": "empty chunk", "total": total}
@@ -64,7 +61,7 @@ def poll_stocks(request: Request) -> dict[str, Any]:
         "ok": True,
         "total": total,
         "offset": offset,
-        "limit": limit,
+        "limit": applied_limit,
         "requested": len(chunk),
         "fetched": len(quotes),
         "inserted": inserted,
@@ -72,11 +69,8 @@ def poll_stocks(request: Request) -> dict[str, Any]:
     }
 
 
-# ───── 2. score-themes (every 5 min, after poll-stocks) ─────
-
-@router.post("/score-themes")
-def score_themes(request: Request) -> dict[str, Any]:
-    _verify_cron(request)
+def do_score_themes() -> dict[str, Any]:
+    """Recalculate realtime theme scores from latest snapshots."""
     themes = theme_store.list_themes(active_only=True)
     if not themes:
         return {"ok": True, "themes": 0}
@@ -126,6 +120,33 @@ def score_themes(request: Request) -> dict[str, Any]:
         "scored": len(scored),
         "confirmed": sum(1 for s in scored if s["is_confirmed"]),
     }
+
+
+# ───── 1. poll-stocks (every 5 min, market hours) ─────
+# Chunkable via ?offset=&limit= so the workflow can split work across calls
+# and stay under Vercel's 60s function ceiling. Default = all codes.
+
+@router.post("/poll-stocks")
+def poll_stocks(request: Request) -> dict[str, Any]:
+    _verify_cron(request)
+    try:
+        offset = int(request.query_params.get("offset", "0"))
+    except ValueError:
+        offset = 0
+    limit_raw = request.query_params.get("limit")
+    try:
+        limit = int(limit_raw) if limit_raw is not None else None
+    except ValueError:
+        limit = None
+    return do_poll_chunk(offset, limit)
+
+
+# ───── 2. score-themes (every 5 min, after poll-stocks) ─────
+
+@router.post("/score-themes")
+def score_themes(request: Request) -> dict[str, Any]:
+    _verify_cron(request)
+    return do_score_themes()
 
 
 # ───── 3. daily-snapshot (15:35 KST) ─────
