@@ -142,3 +142,41 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 CREATE INDEX IF NOT EXISTS idx_reviews_scope_period
     ON reviews(scope, period_key);
+
+-- ─────────── Trade Diary (Phase 6) ───────────
+-- 매매일지 — 금액/손익 없는 일기형. "왜 샀나/팔았나"를 기록.
+
+CREATE TABLE IF NOT EXISTS trade_logs (
+    id BIGSERIAL PRIMARY KEY,
+    date TEXT NOT NULL,
+    symbol TEXT NOT NULL DEFAULT '',
+    label TEXT NOT NULL DEFAULT '',
+    action TEXT NOT NULL,              -- 'buy'|'add'|'sell'|'trim'|'watch'
+    reason TEXT NOT NULL DEFAULT '',   -- 왜 샀나/팔았나 (핵심)
+    emotion TEXT NOT NULL DEFAULT '',
+    lesson TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_logs_date ON trade_logs(date DESC);
+
+-- ─────────── Stock Analysis (Phase 6) ───────────
+-- 종목분석 — 사업·3년실적·펀더멘털·차트메모·옥석판정. 현재가만 자동.
+
+CREATE TABLE IF NOT EXISTS stock_analyses (
+    symbol TEXT PRIMARY KEY,
+    label TEXT NOT NULL DEFAULT '',
+    sector TEXT NOT NULL DEFAULT '',       -- 테마/업종 (예: 반도체 소부장)
+    business TEXT NOT NULL DEFAULT '',     -- 무슨 일을 하는가
+    financials TEXT NOT NULL DEFAULT '[]', -- JSON: [{year, revenue, operating_profit, net_income}]
+    per DOUBLE PRECISION,                  -- 펀더멘털 수동(nullable)
+    pbr DOUBLE PRECISION,
+    debt_ratio DOUBLE PRECISION,
+    chart_memo TEXT NOT NULL DEFAULT '',   -- 차트분석 (본인 작성)
+    chart_image TEXT NOT NULL DEFAULT '',  -- 차트 이미지 (data URL, 업로드 시 자동 축소)
+    memo TEXT NOT NULL DEFAULT '',         -- 종합 메모
+    verdict TEXT NOT NULL DEFAULT 'pending', -- 'gem'(옥)|'watch'(관심)|'reject'(석)|'pending'
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);

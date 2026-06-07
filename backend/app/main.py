@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from app.api.analysis import router as analysis_router
 from app.api.cron import router as cron_router
 from app.api.dashboard import router as dashboard_router
 from app.api.edge import router as edge_router
@@ -21,6 +22,7 @@ from app.api.review import router as review_router
 from app.api.routine import router as routine_router
 from app.api.stocks import router as stocks_router
 from app.api.theme import router as theme_router
+from app.api.trades import router as trades_router
 
 
 app = FastAPI(
@@ -85,6 +87,7 @@ def auth_verify() -> dict[str, bool]:
     """Reachable only when X-App-Token is valid (middleware enforces)."""
     return {"ok": True}
 
+app.include_router(analysis_router, prefix="/api")
 app.include_router(cron_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(edge_router, prefix="/api")
@@ -96,6 +99,7 @@ app.include_router(review_router, prefix="/api")
 app.include_router(routine_router, prefix="/api")
 app.include_router(stocks_router, prefix="/api")
 app.include_router(theme_router, prefix="/api")
+app.include_router(trades_router, prefix="/api")
 
 
 @app.get("/health")

@@ -8,8 +8,10 @@ import { NoteListPage } from "./pages/NoteListPage";
 import { NoteNewPage } from "./pages/NoteNewPage";
 import { NoteDetailPage } from "./pages/NoteDetailPage";
 import { JournalPage } from "./pages/JournalPage";
+import { TradesPage } from "./pages/TradesPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { EdgePage } from "./pages/EdgePage";
+import { AnalysisPage } from "./pages/AnalysisPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { ThemeRadarPage } from "./pages/ThemeRadarPage";
 import { ThemeCalendarPage } from "./pages/ThemeCalendarPage";
@@ -29,8 +31,10 @@ const navItems = [
   { to: "/news", label: "News", icon: "news" },
   { to: "/notes", label: "Vault", icon: "vault" },
   { to: "/journal", label: "Journal", icon: "journal" },
+  { to: "/trades", label: "Trades", icon: "trade" },
   { to: "/portfolio", label: "Portfolio", icon: "pie" },
   { to: "/edge", label: "Edge", icon: "target" },
+  { to: "/analysis", label: "Analysis", icon: "analysis" },
   { to: "/review", label: "Review", icon: "calendar" },
 ];
 
@@ -51,6 +55,25 @@ function NavIcon({ type, size = 14 }: { type: string; size?: number }) {
           <line x1="5.5" y1="5.5" x2="10.5" y2="5.5" />
           <line x1="5.5" y1="8" x2="10.5" y2="8" />
           <line x1="5.5" y1="10.5" x2="9" y2="10.5" />
+        </svg>
+      );
+    case "trade":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 10 V4" />
+          <path d="M2 6 L4 4 L6 6" />
+          <path d="M12 6 V12" />
+          <path d="M14 10 L12 12 L10 10" />
+        </svg>
+      );
+    case "analysis":
+      return (
+        <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="7" cy="7" r="4.5" />
+          <line x1="10.5" y1="10.5" x2="14" y2="14" />
+          <line x1="5.5" y1="7.5" x2="5.5" y2="9" />
+          <line x1="7" y1="6" x2="7" y2="9" />
+          <line x1="8.5" y1="7" x2="8.5" y2="9" />
         </svg>
       );
     case "pie":
@@ -285,8 +308,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/journal" element={<JournalPage />} />
+          <Route path="/trades" element={<TradesPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/edge" element={<EdgePage />} />
+          <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/news" element={<NewsHubPage />} />
           <Route path="/news/:newsId" element={<NewsPage />} />

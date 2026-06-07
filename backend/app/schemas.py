@@ -333,3 +333,81 @@ class ReviewOut(BaseModel):
     content: Dict[str, str]
     created_at: str
     updated_at: str
+
+
+# ─────────── Trade Diary (Phase 6) ───────────
+
+class TradeLogIn(BaseModel):
+    date: str  # YYYY-MM-DD
+    symbol: str = ""
+    label: str = ""
+    action: str  # 'buy'|'add'|'sell'|'trim'|'watch'
+    reason: str = ""
+    emotion: str = ""
+    lesson: str = ""
+
+
+class TradeLogUpdateIn(BaseModel):
+    date: Optional[str] = None
+    symbol: Optional[str] = None
+    label: Optional[str] = None
+    action: Optional[str] = None
+    reason: Optional[str] = None
+    emotion: Optional[str] = None
+    lesson: Optional[str] = None
+
+
+class TradeLogOut(BaseModel):
+    id: int
+    date: str
+    symbol: str
+    label: str
+    action: str
+    reason: str
+    emotion: str
+    lesson: str
+    created_at: str
+    updated_at: str
+
+
+# ─────────── Stock Analysis (Phase 6) ───────────
+
+class FinancialRow(BaseModel):
+    year: str = ""
+    revenue: Optional[float] = None
+    operating_profit: Optional[float] = None
+    net_income: Optional[float] = None
+
+
+class StockAnalysisIn(BaseModel):
+    symbol: str
+    label: str = ""
+    sector: str = ""
+    business: str = ""
+    financials: List[FinancialRow] = []
+    per: Optional[float] = None
+    pbr: Optional[float] = None
+    debt_ratio: Optional[float] = None
+    chart_memo: str = ""
+    chart_image: str = ""
+    memo: str = ""
+    verdict: str = "pending"  # 'pending'|'gem'|'watch'|'reject'
+
+
+class StockAnalysisOut(BaseModel):
+    symbol: str
+    label: str
+    sector: str
+    business: str
+    financials: List[FinancialRow]
+    per: Optional[float] = None
+    pbr: Optional[float] = None
+    debt_ratio: Optional[float] = None
+    chart_memo: str
+    chart_image: str = ""
+    has_chart_image: bool = False
+    memo: str
+    verdict: str
+    current_price: Optional[float] = None
+    created_at: str
+    updated_at: str
